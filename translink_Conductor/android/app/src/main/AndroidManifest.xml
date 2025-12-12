@@ -1,0 +1,115 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         NETWORK — Required for Supabase GPS upserts on every ping.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         LOCATION — All variants for full Android compatibility.
+         ACCESS_FINE_LOCATION     : Precise GPS (all versions)
+         ACCESS_COARSE_LOCATION   : Network/cell tower fallback
+         ACCESS_BACKGROUND_LOCATION : Keep tracking when screen is off
+                                      (Android 10 / Q and above requires this
+                                       as a SEPARATE runtime permission)
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         FOREGROUND SERVICE — Required for background execution on Android 9+.
+         FOREGROUND_SERVICE_LOCATION : Android 14+ requires declaring the type.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         WAKE LOCK — Prevents CPU from sleeping during GPS broadcast.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BOOT — Allows service to restart if device reboots (future-proof).
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         POST NOTIFICATIONS — Required for Android 13+ (API 33) to show
+         the persistent foreground service notification.
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BATTERY — Request exemption from Doze mode so the GPS loop keeps
+         running on older Android devices (6.0 – 8.1) with aggressive OEM
+         battery optimisations (e.g., Xiaomi MIUI, Samsung One UI).
+         ═══════════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
+
+    <application
+        android:label="TransLink Conductor"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:requestLegacyExternalStorage="false"
+        android:usesCleartextTraffic="false">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"/>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
+        <!-- flutter_background_service: foreground service declaration.
+             android:foregroundServiceType="location" is required on Android 14+
+             so the OS allows location access while service runs in background. -->
+        <service
+            android:name="id.flutter.flutter_background_service.BackgroundService"
+            android:exported="false"
+            tools:replace="android:exported"
+            android:foregroundServiceType="location"/>
+
+        <!-- flutter_local_notifications: required for showing the persistent
+             tracking notification on Android 8.0+ (Oreo) -->
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
+            android:exported="false"/>
+        <receiver
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- flutter tool meta-data (do not remove) -->
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2"/>
+    </application>
+
+    <!-- Required for flutter text processing plugin -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>
