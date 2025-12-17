@@ -257,6 +257,7 @@ class LocationService {
     final busNumber = prefs.getString(DriverConstants.keyBusNumber);
     final routeNum  = prefs.getString(DriverConstants.keyRouteNumber);
     final routeName = prefs.getString(DriverConstants.keyRouteName) ?? '';
+    final fleetType = prefs.getString(DriverConstants.keyFleetType) ?? 'private';
 
     if (busNumber == null || busNumber.isEmpty ||
         routeNum  == null || routeNum.isEmpty) {
@@ -365,6 +366,7 @@ class LocationService {
         headwayMinutes: headway,
         nextBusDueAt:   nextDue,
         status:         statusStr,
+        fleetType:      fleetType,
       );
 
       if (error != null) {

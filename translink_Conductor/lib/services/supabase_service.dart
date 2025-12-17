@@ -76,6 +76,7 @@ class SupabaseService {
     String status = 'on_time',
     int headwayMinutes = 20,
     DateTime? nextBusDueAt,
+    String fleetType = 'private',
   }) async {
     try {
       final normalizedBus = busNumber.trim().toUpperCase();
@@ -89,6 +90,7 @@ class SupabaseService {
         'speed':           speed,
         'heading':         heading,
         'status':          status,
+        'fleet_type':      fleetType,
         'last_updated_at': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'bus_number');
       

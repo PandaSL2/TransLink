@@ -29,6 +29,7 @@ class SetupScreen extends StatefulWidget {
 class _SetupScreenState extends State<SetupScreen> {
   final _busCtrl   = TextEditingController();
   final _routeCtrl = TextEditingController();
+  String _selectedFleet = 'private'; // default
 
   RouteSchedule? _selectedSchedule;
   bool _isRegistering = false;
@@ -77,6 +78,9 @@ class _SetupScreenState extends State<SetupScreen> {
         msg.contains('http') ||
         msg.contains('connection')) {
       return l10n.translate('no_internet');
+    }
+    if (msg.contains('fleet_type') || msg.contains('pgrst204')) {
+      return 'System Update Required: Missing fleet_type column in database.';
     }
     return error.toString();
   }
@@ -205,6 +209,7 @@ class _SetupScreenState extends State<SetupScreen> {
       prefs.setString(DriverConstants.keyScheduleLabel,  schedule.frequencyLabel),
       prefs.setString(DriverConstants.keyFirstBus,       schedule.firstBus),
       prefs.setString(DriverConstants.keyLastBus,        schedule.lastBus),
+      prefs.setString(DriverConstants.keyFleetType,      _selectedFleet),
     ]);
 
     // Register background tasks but DON'T start tracking yet (User must press Start manually)
@@ -279,8 +284,34 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
 
               const SizedBox(height: 28),
+               
+               _label(l10n.translate('select_fleet') ?? 'Select Fleet'),
+               const SizedBox(height: 12),
+               Row(
+                 children: [
+                   Expanded(
+                     child: _fleetCard(
+                       'ctb', 
+                       l10n.translate('ctb_label') ?? 'CTB', 
+                       Icons.account_balance_rounded, 
+                       const Color(0xFFD32F2F),
+                     ),
+                   ),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: _fleetCard(
+                       'private', 
+                       l10n.translate('private_label') ?? 'Private', 
+                       Icons.directions_bus_rounded, 
+                       const Color(0xFF1976D2),
+                     ),
+                   ),
+                 ],
+               ),
 
-              _label(l10n.translate('bus_label')),
+               const SizedBox(height: 24),
+
+               _label(l10n.translate('bus_label')),
               const SizedBox(height: 8),
               TextField(
                 controller: _busCtrl,
@@ -469,4 +500,43 @@ class _SetupScreenState extends State<SetupScreen> {
     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 2)),
     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
   );
+
+  Widget _fleetCard(String type, String label, IconData icon, Color color) {
+    final isSelected = _selectedFleet == type;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _selectedFleet = type);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? color : const Color(0xFFE2E8F0),
+            width: 2,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(color: color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))
+          ] : null,
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: isSelected ? Colors.white : color, size: 30),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: isSelected ? Colors.white : const Color(0xFF1E293B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

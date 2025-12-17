@@ -62,9 +62,12 @@ class AppLocalizations {
       'location_permission_msg': 'TransLink Conductor needs precise GPS to broadcast your position to passengers. Please allow it in Settings.',
       'gps_is_off': 'GPS is Off',
       'gps_is_off_msg': 'Please enable Location / GPS in your device settings.',
-      'reliability_first': 'Reliability First',
-      'battery_optimization_msg': 'To ensure passengers see your bus live even when your screen is off, please select "Allow" or "No Restrictions" in the next screen.\n\nThis is essential for Xiaomi, Samsung, and Huawei devices.',
+      'reliability_first': 'Reliable Tracking',
+      'battery_optimization_msg': 'To ensure passengers can see your bus live even when your screen is locked, please select "Allow" or "No Restrictions" in the next popup.\n\nEssential for Xiaomi, Samsung, and Huawei phones.',
       'ok_understand': 'OK, I Understand',
+      'select_fleet': 'Select Fleet',
+      'ctb_label': 'CTB',
+      'private_label': 'PRIVATE',
       'open_settings': 'Open Settings',
       'register_once_msg': 'Register once. The app will remember your details until you log out.',
       'bus_number_hint': 'e.g. NB-4521',
@@ -144,6 +147,11 @@ class AppLocalizations {
       'no_history': 'ඉතිහාසයක් නොමැත.',
       'no_internet': 'අන්තර්ජාල සම්බන්ධතාවය පරීක්ෂා කරන්න.',
       'sync_failed': 'සම්බන්ධතාවය අසාර්ථකයි. නැවත උත්සාහ කරයි...',
+      'reliability_first': 'ස්ථාවර සම්බන්ධතාවය',
+      'battery_optimization_msg': 'ඔබේ දුරකථනයේ තිරය අගුළු දමා ඇති විට පවා මගීන්ට බස් රථය දැකීමට හැකි වන පරිදි, මීළඟ තිරයේ "ඉඩ දෙන්න" (Allow) හෝ "සීමා කිරීම් නැත" (No Restrictions) යන්න තෝරන්න.\n\nXiaomi, Samsung සහ Huawei දුරකථන සඳහා මෙය අත්‍යවශ්‍ය වේ.',
+      'select_fleet': 'බස් රථ වර්ගය තෝරන්න',
+      'ctb_label': 'ලංගම (CTB)',
+      'private_label': 'පෞද්ගලික (PRIVATE)',
     },
     'ta': {
       'driver_portal': 'ஓட்டுநர் போர்டல்',
@@ -197,11 +205,18 @@ class AppLocalizations {
       'no_history': 'எந்த வரலாறும் கிடைக்கவில்லை.',
       'no_internet': 'இணைய இணைப்பு இல்லை. உங்கள் தரவைச் சரிபார்க்கவும்.',
       'sync_failed': 'ஒத்திசைவு தோல்வியடைந்தது. மீண்டும் இணைக்கிறது...',
+      'reliability_first': 'நிலையான கண்காணிப்பு',
+      'battery_optimization_msg': 'உங்கள் திரை பூட்டப்பட்டிருந்தாலும் பயணிகள் உங்கள் பேருந்தைக் காண முடியும் என்பதை உறுதிப்படுத்த, அடுத்த திரையில் "அனுமதி" (Allow) அல்லது "கட்டுப்பாடுகள் இல்லை" (No Restrictions) என்பதைத் தேர்ந்தெடுக்கவும்.\n\nXiaomi, Samsung மற்றும் Huawei தொலைபேசிகளுக்கு இது அவசியம்.',
+      'select_fleet': 'படை வகை தேர்ந்தெடுக்கவும்',
+      'ctb_label': 'CTB',
+      'private_label': 'தனியார்',
     },
   };
 
   String translate(String key, {Map<String, String>? args}) {
-    String value = _localizedValues[locale.languageCode]?[key] ?? key;
+    String value = _localizedValues[locale.languageCode]?[key] ?? 
+                   _localizedValues['en']?[key] ?? 
+                   key;
     if (args != null) {
       args.forEach((k, v) {
         value = value.replaceAll('{$k}', v);
