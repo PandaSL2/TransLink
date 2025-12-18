@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/utils/app_localizations.dart';
+import '../../core/services/settings_provider.dart';
+import '../../core/theme/app_theme.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onFinish;
@@ -17,18 +20,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final List<Map<String, String>> onboardingData = [
     {
-      "title": "Find Your Bus Easily",
-      "subtitle": "Track all buses seamlessly across Sri Lanka in real-time. No more waiting helplessly at the bus stand.",
-      "image": "assets/images/onboarding_bus.png"
+      "title": "welcome_title",
+      "subtitle": "welcome_sub",
+      "image": "assets/images/onboarding_language.png"
     },
     {
-      "title": "Live Maps & Routes",
-      "subtitle": "Get accurate ETA, real-time map tracking, and smart routes to your destination safely.",
-      "image": "assets/images/onboarding_map.png"
+      "title": "mixed_fleet",
+      "subtitle": "mixed_fleet_sub",
+      "image": "assets/images/onboarding_mixed_fleet.png"
     },
     {
-      "title": "Digital Ticketing",
-      "subtitle": "Pay securely with QR codes directly on your mobile using the TransLink Wallet. Cashless made easy.",
+      "title": "intercity_express",
+      "subtitle": "intercity_express_sub",
+      "image": "assets/images/onboarding_intercity.png"
+    },
+    {
+      "title": "onboarding_payment_title",
+      "subtitle": "onboarding_payment_sub",
       "image": "assets/images/onboarding_ticket.png"
     },
   ];
@@ -43,27 +51,39 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: _completeOnboarding,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  child: Text(
-                    AppLocalizations.trOf(context, 'skip_nav'),
-                    style: GoogleFonts.inter(
-                      color: colorScheme.onSurface.withOpacity(0.5),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 14,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Logo/Name
+                  Text(
+                    'TransLink',
+                    style: GoogleFonts.outfit(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: colorScheme.primary,
                     ),
                   ),
-                ),
+                  TextButton(
+                    onPressed: _completeOnboarding,
+                    child: Text(
+                      l10n.translate('skip_nav'),
+                      style: GoogleFonts.inter(
+                        color: colorScheme.onSurface.withOpacity(0.5),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -75,11 +95,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   });
                 },
                 itemCount: onboardingData.length,
-                itemBuilder: (context, index) => OnboardingContent(
-                  image: onboardingData[index]["image"]!,
-                  title: AppLocalizations.trOf(context, onboardingData[index]["title"]!),
-                  subtitle: AppLocalizations.trOf(context, onboardingData[index]["subtitle"]!),
-                ),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return _buildLanguageSlide(l10n, theme);
+                  }
+                  return OnboardingContent(
+                    image: onboardingData[index]["image"]!,
+                    title: l10n.translate(onboardingData[index]["title"]!),
+                    subtitle: l10n.translate(onboardingData[index]["subtitle"]!),
+                  );
+                },
               ),
             ),
             Padding(
@@ -96,35 +121,43 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   const SizedBox(height: 32),
                   SizedBox(
                     width: double.infinity,
-                    height: 56,
+                    height: 64,
                     child: ElevatedButton(
                       onPressed: () {
                         if (_currentPage == onboardingData.length - 1) {
                           _completeOnboarding();
                         } else {
                           _pageController.nextPage(
-                            duration: const Duration(milliseconds: 300),
-                            curve: Curves.easeInOut,
+                            duration: const Duration(milliseconds: 500),
+                            curve: Curves.easeOutCubic,
                           );
                         }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: colorScheme.primary,
                         foregroundColor: colorScheme.onPrimary,
-                        elevation: 0,
+                        elevation: 8,
+                        shadowColor: colorScheme.primary.withOpacity(0.4),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
-                      child: Text(
-                        _currentPage == onboardingData.length - 1
-                            ? AppLocalizations.trOf(context, 'get_started_nav')
-                            : AppLocalizations.trOf(context, 'next_nav'),
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _currentPage == onboardingData.length - 1
+                                ? l10n.translate('get_started_nav')
+                                : l10n.translate('next_nav'),
+                            style: GoogleFonts.outfit(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.arrow_forward_rounded, size: 20),
+                        ],
                       ),
                     ),
                   ),
@@ -137,10 +170,89 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Widget _buildLanguageSlide(AppLocalizations l10n, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Image.asset(onboardingData[0]["image"]!, height: 240),
+          const SizedBox(height: 32),
+          Text(
+            l10n.translate('welcome_title'),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.translate('welcome_sub'),
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 16,
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+            ),
+          ),
+          const SizedBox(height: 40),
+          _languageCard('English', 'English', '🇬🇧'),
+          const SizedBox(height: 12),
+          _languageCard('සිංහල', 'සිංහල', '🇱🇰'),
+          const SizedBox(height: 12),
+          _languageCard('தமிழ்', 'தமிழ்', '🇱🇰'),
+        ],
+      ),
+    );
+  }
+
+  Widget _languageCard(String label, String value, String flag) {
+    final settings = Provider.of<SettingsProvider>(context);
+    final isSelected = settings.languageName == value;
+    final theme = Theme.of(context);
+
+    return GestureDetector(
+      onTap: () => settings.setLanguage(value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? theme.colorScheme.primary : theme.colorScheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? theme.colorScheme.primary : theme.dividerColor,
+            width: 2,
+          ),
+          boxShadow: isSelected ? [
+            BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
+          ] : null,
+        ),
+        child: Row(
+          children: [
+            Text(flag, style: const TextStyle(fontSize: 24)),
+            const SizedBox(width: 16),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+              ),
+            ),
+            const Spacer(),
+            if (isSelected)
+              Icon(Icons.check_circle_rounded, color: theme.colorScheme.onPrimary, size: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
   AnimatedContainer buildDot({required int index}) {
     final theme = Theme.of(context);
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 300),
       margin: const EdgeInsets.only(right: 8),
       height: 8,
       width: _currentPage == index ? 24 : 8,
@@ -174,30 +286,23 @@ class OnboardingContent extends StatelessWidget {
         children: [
           const Spacer(),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
-                  color: theme.shadowColor.withOpacity(0.1),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+                  color: theme.shadowColor.withOpacity(0.05),
+                  blurRadius: 40,
+                  offset: const Offset(0, 20),
                 )
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(24),
               child: Image.asset(
                 image,
-                height: 280,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                   height: 280, 
-                   alignment: Alignment.center,
-                   color: Colors.grey[200],
-                   child: const Icon(Icons.image, size: 50, color: Colors.grey)
-                ),
+                height: 300,
+                fit: BoxFit.contain,
               ),
             ),
           ),
@@ -206,9 +311,10 @@ class OnboardingContent extends StatelessWidget {
             title,
             textAlign: TextAlign.center,
             style: GoogleFonts.outfit(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
+              fontSize: 32,
+              fontWeight: FontWeight.w900,
               color: theme.colorScheme.onSurface,
+              letterSpacing: -0.5,
             ),
           ),
           const SizedBox(height: 16),
@@ -216,9 +322,9 @@ class OnboardingContent extends StatelessWidget {
             subtitle,
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
-              fontSize: 16,
+              fontSize: 17,
               color: theme.colorScheme.onSurface.withOpacity(0.6),
-              height: 1.5,
+              height: 1.6,
             ),
           ),
           const Spacer(),
