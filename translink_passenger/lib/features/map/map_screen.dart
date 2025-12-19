@@ -287,7 +287,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       final id = bus.busNumber;
       final animPos = _busAnimationController.getPosition(id);
       final animRot = _busAnimationController.getRotation(id);
-      final icon = _busAnimationController.getIcon(id) ?? _busAnimationController.defaultIcon;
+      final icon = _busAnimationController.getIcon(id, bus.fleetType, bus.status) ?? _busAnimationController.defaultIcon;
       final finalPos = animPos.latitude != 0 ? animPos : gmaps.LatLng(bus.lat, bus.lng);
 
       if (finalPos.latitude != 0) {

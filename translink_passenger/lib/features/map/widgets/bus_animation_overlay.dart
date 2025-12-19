@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../models/bus_models.dart';
 import 'bus_marker_generator.dart';
 
@@ -39,11 +40,16 @@ class BusAnimationController {
       final bool isDelayed = bus.status == 'delayed';
       
       // 1. Generate/Refresh Premium Icon
-      if (!_cachedIcons.containsKey(id)) {
-        _cachedIcons[id] = await BusMarkerGenerator.generateMarker(
+       final String cacheKey = '${id}_${bus.fleetType}_${isDelayed}';
+       if (!_cachedIcons.containsKey(cacheKey)) {
+        final Color busColor = bus.fleetType == 'ctb' 
+            ? AppColors.ctbRed 
+            : AppColors.privateBlue;
+            
+        _cachedIcons[cacheKey] = await BusMarkerGenerator.generateMarker(
           busNumber: id,
           routeName: bus.routeName,
-          color: isDelayed ? const Color(0xFFFFB300) : const Color(0xFF10B981),
+          color: isDelayed ? const Color(0xFFFFB300) : busColor,
           isLive: true,
         );
       }
@@ -144,7 +150,9 @@ class BusAnimationController {
     return math.sqrt(math.pow(p1.latitude - p2.latitude, 2) + math.pow(p1.longitude - p2.longitude, 2)) * 111320.0;
   }
 
-  BitmapDescriptor? getIcon(String busNumber) => _cachedIcons[busNumber];
+  BitmapDescriptor? getIcon(String id, String fleetType, String status) {
+    return _cachedIcons['${id}_${fleetType}_${status == 'delayed'}'];
+  }
 
 
   BitmapDescriptor get defaultIcon => BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
