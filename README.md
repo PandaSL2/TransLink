@@ -40,8 +40,11 @@ The ecosystem now supports full tracking of both **Private** and **CTB (State)**
 | Layer               | Technology |
 
 | **Front-end** |     Flutter (Dart) |
+
 | **Backend** |       Supabase (PostgreSQL / GraphQL / Realtime) 
+
 | **Maps & Routing** | Google Maps SDK & Google Directions API |
+
 | **Payments** |      Secure QR Code (HMAC-based) |
 
 ### 🛠️ **Supabase Integration**
