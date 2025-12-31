@@ -171,12 +171,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildLanguageSlide(AppLocalizations l10n, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset(onboardingData[0]["image"]!, height: 240),
+          const SizedBox(height: 24),
+          Image.asset(onboardingData[0]["image"]!, height: 200),
           const SizedBox(height: 32),
           Text(
             l10n.translate('welcome_title'),
@@ -196,12 +196,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               color: theme.colorScheme.onSurface.withOpacity(0.6),
             ),
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 32),
           _languageCard('English', 'English', '🇬🇧'),
           const SizedBox(height: 12),
           _languageCard('සිංහල', 'සිංහල', '🇱🇰'),
           const SizedBox(height: 12),
           _languageCard('தமிழ்', 'தமிழ்', '🇱🇰'),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -279,12 +280,11 @@ class OnboardingContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Spacer(),
+          const SizedBox(height: 48),
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -301,12 +301,12 @@ class OnboardingContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               child: Image.asset(
                 image,
-                height: 300,
+                height: 280,
                 fit: BoxFit.contain,
               ),
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 40),
           Text(
             title,
             textAlign: TextAlign.center,
@@ -327,7 +327,7 @@ class OnboardingContent extends StatelessWidget {
               height: 1.6,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 48),
         ],
       ),
     );
