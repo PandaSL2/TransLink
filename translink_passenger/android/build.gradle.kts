@@ -13,6 +13,10 @@ allprojects {
 
 
 subprojects {
+    val projectCompileSdkVersion = project.property("project.compileSdkVersion").toString().toInt()
+    val projectTargetSdkVersion = project.property("project.targetSdkVersion").toString().toInt()
+    val projectJavaVersion = project.property("project.javaVersion").toString().toInt()
+
     project.configurations.all {
         resolutionStrategy.eachDependency {
             if (requested.group == "androidx.lifecycle") {
@@ -26,12 +30,21 @@ subprojects {
     afterEvaluate {
         val extension = extensions.findByName("android")
         if (extension is com.android.build.gradle.BaseExtension) {
-            extension.compileSdkVersion(36)
+            extension.compileSdkVersion(projectCompileSdkVersion)
             extension.defaultConfig {
-                targetSdkVersion(35)
+                targetSdkVersion(projectTargetSdkVersion)
             }
             if (extension.namespace == null) {
                 extension.namespace = "com.translink.passenger.deps.${project.name.replace("-", "_")}"
+            }
+            extension.compileOptions {
+                sourceCompatibility = JavaVersion.toVersion(projectJavaVersion)
+                targetCompatibility = JavaVersion.toVersion(projectJavaVersion)
+            }
+        }
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(projectJavaVersion.toString()))
             }
         }
     }
