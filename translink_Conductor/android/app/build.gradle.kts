@@ -15,7 +15,7 @@ configurations.all {
 
 android {
     namespace = "com.translink.driver.translink_driver"
-    compileSdk = 36
+    compileSdk = project.property("project.compileSdkVersion").toString().toInt()
     ndkVersion = flutter.ndkVersion
 
     lint {
@@ -24,21 +24,21 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.toVersion(project.property("project.javaVersion").toString().toInt())
+        targetCompatibility = JavaVersion.toVersion(project.property("project.javaVersion").toString().toInt())
         isCoreLibraryDesugaringEnabled = true
     }
 
     kotlin {
         compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.fromTarget(project.property("project.javaVersion").toString()))
         }
     }
 
     defaultConfig {
         applicationId = "com.translink.driver.translink_driver"
         minSdk = flutter.minSdkVersion
-        targetSdk = 35
+        targetSdk = project.property("project.targetSdkVersion").toString().toInt()
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
@@ -56,15 +56,26 @@ android {
     }
 
     packaging {
-        jniLibs {
-            useLegacyPackaging = true
-            excludes.add("**/armeabi-v7a/**")
-            excludes.add("**/x86/**")
-            excludes.add("**/x86_64/**")
-        }
         resources {
             excludes.add("**/LICENSE*")
             excludes.add("**/META-INF/*.version")
+        }
+    }
+
+    // Expert workaround: Ensure APKs are copied to the Flutter build directory if the plugin fails to do so.
+    applicationVariants.all {
+        val variant = this
+        val outputDir = File(project.projectDir, "../../build/app/outputs/flutter-apk")
+        
+        variant.outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            variant.assembleProvider.get().doLast {
+                copy {
+                    from(output.outputFile)
+                    into(outputDir)
+                    rename { "app-${variant.buildType.name}.apk" }
+                }
+            }
         }
     }
 }
