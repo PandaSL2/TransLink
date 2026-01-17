@@ -1,34 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Semantic color system for TransLink.
+/// Rules:
+/// - [primary]     → Trust, navigation, headers, active UI
+/// - [cta]         → ONE primary action button per screen ONLY (never info/nav)
+/// - [ctbRed]      → CTB fleet badge/icon ONLY (never large area fills)
+/// - [privateBlue] → Private fleet badge/icon ONLY
+/// - [liveGreen]   → Active / arriving status
+/// - [delayedAmber]→ Delayed / warning status
 class AppColors {
-  // Brand Identity (Royal Sri Lanka Premium)
-  static const Color primary = Color(0xFF2563EB);      // Trusted Royal Blue
+  // ── Brand ───────────────────────────────────────────────────────────────
+  static const Color primary     = Color(0xFF1D4ED8); // Deep Blue — trust, navigation
   static const Color primaryDark = Color(0xFF1E40AF);
-  static const Color secondary = Color(0xFFD97706);    // Amber Gold
-  static const Color accent = Color(0xFF10B981);       // Emerald Green (Success)
-  
-  // Fleet Branding
-  static const Color ctbRed = Color(0xFFD32F2F);       // Sri Lanka CTB Red
-  static const Color privateBlue = Color(0xFF1976D2);  // Private Bus Blue
-  
-  // Light Mode Core - Slate/Cloud Palette (Fixes Washout)
-  static const Color backgroundLight = Color(0xFFF1F5F9);   // Slate 100 (Deeper than 50)
-  static const Color surfaceLight = Color(0xFFFFFFFF);
-  static const Color textPrimaryLight = Color(0xFF0F172A);  // Slate 900
-  static const Color textSecondaryLight = Color(0xFF475569); // Slate 600 (Better accessibility)
-  static const Color dividerLight = Color(0xFFE2E8F0);      // Slate 200
-  
-  // Dark Mode Core - Obsidian/Midnight (Fixes Balance)
-  static const Color backgroundDark = Color(0xFF020617);    // Slate 950
-  static const Color surfaceDark = Color(0xFF0F172A);       // Slate 900
-  static const Color surfaceVariantDark = Color(0xFF1E293B); // Slate 800
-  static const Color textPrimaryDark = Color(0xFFF8FAFC);   // Slate 50
-  static const Color textSecondaryDark = Color(0xFF94A3B8); // Slate 400
-  static const Color dividerDark = Color(0xFF334155);       // Slate 700
 
-  // Semantic
-  static const Color error = Color(0xFFEF4444);
+  // ── CTA (Call-To-Action — use on ONE button per screen ONLY) ───────────
+  static const Color cta         = Color(0xFFF97316); // Orange — confirms action
+
+  // Legacy alias kept for backward compat (maps to cta)
+  static const Color secondary   = Color(0xFFF97316);
+
+  // ── Fleet Branding (badge/icon use ONLY — not large fills) ─────────────
+  static const Color ctbRed      = Color(0xFFC62828); // CTB buses
+  static const Color privateBlue = Color(0xFF1565C0); // Private buses
+
+  // ── Semantic Status ─────────────────────────────────────────────────────
+  static const Color liveGreen    = Color(0xFF16A34A); // Active / arriving
+  static const Color delayedAmber = Color(0xFFD97706); // Delayed / warning
+  static const Color accent       = Color(0xFF16A34A); // alias for liveGreen
+  static const Color error        = Color(0xFFEF4444);
+
+  // ── Light Mode ──────────────────────────────────────────────────────────
+  static const Color backgroundLight    = Color(0xFFF1F5F9);
+  static const Color surfaceLight       = Color(0xFFFFFFFF);
+  static const Color textPrimaryLight   = Color(0xFF0F172A);
+  static const Color textSecondaryLight = Color(0xFF64748B);
+  static const Color dividerLight       = Color(0xFFE2E8F0);
+
+  // ── Dark Mode ───────────────────────────────────────────────────────────
+  static const Color backgroundDark    = Color(0xFF020617);
+  static const Color surfaceDark       = Color(0xFF0F172A);
+  static const Color surfaceVariantDark= Color(0xFF1E293B);
+  static const Color textPrimaryDark   = Color(0xFFF8FAFC);
+  static const Color textSecondaryDark = Color(0xFF94A3B8);
+  static const Color dividerDark       = Color(0xFF334155);
+}
+
+/// Spacing constants based on 8pt grid.
+class AppSpacing {
+  static const double xs   = 4;
+  static const double sm   = 8;
+  static const double md   = 16;
+  static const double lg   = 24;
+  static const double xl   = 32;
+  static const double xxl  = 48;
 }
 
 class AppTheme {
