@@ -182,32 +182,35 @@ class MainShellState extends State<MainShell> {
 
   Widget _buildNavItem(int index, IconData icon, String label) {
     final isActive = _currentIndex == index;
-    final color = isActive ? Theme.of(context).colorScheme.primary : Theme.of(context).textTheme.bodySmall?.color;
-    
+    final activeColor = Theme.of(context).colorScheme.primary;
+    final inactiveColor = Theme.of(context).colorScheme.onSurfaceVariant;
+    final color = isActive ? activeColor : inactiveColor;
+
     return GestureDetector(
       onTap: () => setTab(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
+        duration: const Duration(milliseconds: 250),
         curve: Curves.easeInOut,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        constraints: const BoxConstraints(minWidth: 64),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? Theme.of(context).colorScheme.primary.withOpacity(0.08) : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          color: isActive ? activeColor.withOpacity(0.1) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: color, size: 28),
-            if (isActive) ...[
-              const SizedBox(width: 8),
-              Text(label, style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w800,
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
                 color: color,
-                letterSpacing: -0.2,
-              )),
-            ],
+              ),
+            ),
           ],
         ),
       ),

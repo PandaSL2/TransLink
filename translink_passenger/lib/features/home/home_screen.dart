@@ -10,6 +10,8 @@ import '../../core/services/settings_provider.dart';
 import '../../ui/main_shell.dart';
 import '../../models/bus_models.dart';
 import '../ai/ai_chat_screen.dart';
+import '../../core/widgets/tl_bus_stop_card.dart';
+import '../../core/widgets/tl_status_badge.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -258,45 +260,151 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchCard(AppLocalizations l10n) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+      ),
+      child: Column(
+        children: [
+          // From row
+          GestureDetector(
+            onTap: () => _navigateToSearch(),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(
+                      color: AppColors.liveGreen,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.liveGreen.withOpacity(0.4), width: 3),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      l10n.translate('from_location') ?? 'My Location',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.liveGreen,
+                      ),
+                    ),
+                  ),
+                  // Voice button
+                  GestureDetector(
+                    onTap: _startListening,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _isListening
+                            ? AppColors.error.withOpacity(0.1)
+                            : Theme.of(context).colorScheme.primary.withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isListening ? Icons.graphic_eq_rounded : Icons.mic_none_rounded,
+                        color: _isListening ? AppColors.error : Theme.of(context).colorScheme.primary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Divider with swap icon
+          Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 20),
+                child: Container(
+                  width: 1,
+                  height: 12,
+                  color: Theme.of(context).dividerColor,
+                ),
+              ),
+            ],
+          ),
+          // To row
+          GestureDetector(
+            onTap: () => _navigateToSearch(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+              child: Row(
+                children: [
+                  Container(
+                    width: 10, height: 10,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primary,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      l10n.translate('search_hint') ?? 'Where are you going?',
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Quick links
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: Row(
+              children: [
+                _quickSearchChip(Icons.home_rounded, l10n.translate('home_nav') ?? 'Home'),
+                const SizedBox(width: 8),
+                _quickSearchChip(Icons.work_rounded, 'Work'),
+                const SizedBox(width: 8),
+                _quickSearchChip(Icons.star_rounded, l10n.translate('saved_nav') ?? 'Saved'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickSearchChip(IconData icon, String label) {
     return GestureDetector(
       onTap: () => _navigateToSearch(),
       child: Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+          color: Theme.of(context).colorScheme.primary.withOpacity(0.07),
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), 
-              blurRadius: 20, 
-              offset: const Offset(0, 8)
-            ),
-          ],
-          border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+          border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.15)),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.search_rounded, color: Theme.of(context).colorScheme.primary, size: 24),
-            const SizedBox(width: 16),
+            Icon(icon, size: 13, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 5),
             Text(
-              l10n.translate('search_hint') ?? 'Where are you going?',
+              label,
               style: GoogleFonts.inter(
-                fontSize: 16, 
-                fontWeight: FontWeight.w600, 
-                color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.7)
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).colorScheme.primary,
               ),
-            ),
-            const Spacer(),
-            VerticalDivider(indent: 18, endIndent: 18, color: Theme.of(context).dividerColor),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: Icon(
-                _isListening ? Icons.graphic_eq_rounded : Icons.mic_none_rounded, 
-                color: _isListening ? Colors.redAccent : Theme.of(context).colorScheme.primary, 
-                size: 22
-              ),
-              onPressed: _startListening,
             ),
           ],
         ),
@@ -496,20 +604,22 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    return SizedBox(
-      height: 155,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: _nearbyStops.length,
-        itemBuilder: (context, i) => _buildStopCard(_nearbyStops[i], l10n),
-      ),
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _nearbyStops.length > 3 ? 3 : _nearbyStops.length,
+      itemBuilder: (context, i) => _buildStopCard(_nearbyStops[i], l10n),
     );
   }
 
   Widget _buildStopCard(NearestBusStop stop, AppLocalizations l10n) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
+    return TLBusStopCard(
+      stopName: stop.name,
+      walkingMeters: stop.walkingMeters,
+      walkingMinutes: stop.walkingMinutes,
+      ctbCount: 0,
+      privateCount: 0,
+      nextBusStatus: BusStatus.arriving,
       onTap: () {
         final shell = context.findAncestorStateOfType<MainShellState>();
         if (shell != null) {
@@ -520,72 +630,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ));
         }
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: 260,
-        margin: const EdgeInsets.only(right: 16, bottom: 8, top: 4),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.4 : 0.04), 
-              blurRadius: 15, 
-              offset: const Offset(0, 6)
-            )
-          ],
-          border: Border.all(color: Theme.of(context).dividerColor),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.departure_board_rounded, color: AppColors.primary, size: 20),
-                ),
-                const Spacer(),
-                Text(
-                  '${stop.walkingMinutes} ${l10n.translate('min') ?? 'min'}',
-                  style: GoogleFonts.inter(
-                    fontSize: 12, 
-                    fontWeight: FontWeight.w900, 
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Text(
-              stop.name, 
-              style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 17), 
-              maxLines: 1, 
-              overflow: TextOverflow.ellipsis
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(Icons.directions_walk_rounded, size: 14, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                const SizedBox(width: 4),
-                Text(
-                  '${stop.walkingMeters}${l10n.translate('m_away') ?? 'm away'}', 
-                  style: GoogleFonts.inter(
-                    fontSize: 12, 
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  )
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+      onViewBoard: () {
+        final shell = context.findAncestorStateOfType<MainShellState>();
+        if (shell != null) {
+          shell.setTab(1, argument: TripModel(
+            destinationName: stop.name,
+            destLat: stop.lat,
+            destLng: stop.lng,
+          ));
+        }
+      },
     );
   }
 
@@ -603,16 +657,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildQuickActions(AppLocalizations l10n) {
     return Row(
       children: [
-        _quickActionBtn(Icons.account_balance_wallet_rounded, l10n.translate('top_up'), Colors.orange, () {
+        _quickActionBtn(Icons.account_balance_wallet_rounded, l10n.translate('top_up'), AppColors.primary, () {
           final shell = context.findAncestorStateOfType<MainShellState>();
           if (shell != null) shell.setTab(3);
         }),
         const SizedBox(width: 12),
-        _quickActionBtn(Icons.auto_awesome_rounded, l10n.translate('ai_support'), Colors.purple, () {
+        _quickActionBtn(Icons.auto_awesome_rounded, l10n.translate('ai_support'), AppColors.primary, () {
           Navigator.push(context, MaterialPageRoute(builder: (c) => const AiChatScreen()));
         }),
         const SizedBox(width: 12),
-        _quickActionBtn(Icons.map_rounded, l10n.translate('map_view'), Colors.teal, () {
+        _quickActionBtn(Icons.map_rounded, l10n.translate('map_view'), AppColors.primary, () {
           final shell = context.findAncestorStateOfType<MainShellState>();
           if (shell != null) shell.setTab(1);
         }),
@@ -625,11 +679,11 @@ class _HomeScreenState extends State<HomeScreen> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: color.withOpacity(0.1)),
+            color: color.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: color.withOpacity(0.12)),
           ),
           child: Column(
             children: [
@@ -638,7 +692,11 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

@@ -123,17 +123,20 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             decoration: BoxDecoration(
-              color: AppColors.secondary.withOpacity(0.08),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.07),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TabBar(
               controller: _tabController,
-              indicator: BoxDecoration(color: AppColors.secondary, borderRadius: BorderRadius.circular(10)),
+              indicator: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
               indicatorSize: TabBarIndicatorSize.tab,
               labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
               unselectedLabelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
-              labelColor: Theme.of(context).colorScheme.onSecondary,
-              unselectedLabelColor: Theme.of(context).textTheme.bodySmall?.color,
+              labelColor: Colors.white,
+              unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
               dividerColor: Colors.transparent,
               tabs: [Tab(text: l10n.translate('timetable_tab')), Tab(text: l10n.translate('saved_routes_tab'))],
             ),
@@ -151,7 +154,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
   }
 
   Widget _timetableList() {
-    if (_loadingStops) return const Center(child: CircularProgressIndicator(color: AppColors.secondary));
+    if (_loadingStops) return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
 
     return RefreshIndicator(
       onRefresh: _loadNearbyStops,
@@ -261,7 +264,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
   }
 
   Widget _favouritesList(List<AiDiscoveredRoute> favs, List<Map<String, dynamic>> places) {
-    if (_loadingFavs) return const Center(child: CircularProgressIndicator(color: AppColors.secondary));
+    if (_loadingFavs) return Center(child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary));
 
     return RefreshIndicator(
       onRefresh: _loadData,
