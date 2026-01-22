@@ -6,6 +6,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/driver_constants.dart';
+import '../../core/utils/error_handler.dart';
 import '../../services/route_schedule_service.dart';
 import '../../services/schedule_watch_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -522,15 +523,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showErrorSnackBar(dynamic error) {
-    final l10n = AppLocalizations.of(context)!;
-    final message = _getReadableErrorMessage(error, l10n);
-
+    final msg = ErrorHandler.getFriendlyMessage(error, context);
+    if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(
         children: [
           const Icon(Icons.error_outline_rounded, color: Colors.white),
           const SizedBox(width: 12),
-          Expanded(child: Text(message)),
+          Expanded(child: Text(msg)),
         ],
       ),
       backgroundColor: const Color(0xFFDC2626),

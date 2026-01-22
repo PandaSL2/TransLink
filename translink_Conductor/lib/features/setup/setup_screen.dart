@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/utils/error_handler.dart';
 import '../../core/constants/driver_constants.dart';
 import '../../services/route_schedule_service.dart';
 import '../../services/schedule_watch_service.dart';
@@ -57,32 +58,19 @@ class _SetupScreenState extends State<SetupScreen> {
     } catch (e) {
       debugPrint('Error loading routes: $e');
       if (mounted) {
-        final l10n = AppLocalizations.of(context)!;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_getReadableErrorMessage(e, l10n)),
-            backgroundColor: const Color(0xFFDC2626),
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Registration Failed'),
+            content: Text(ErrorHandler.getFriendlyMessage(e, context)),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Retry')),
+            ],
           ),
         );
         setState(() => _isLoadingRoutes = false);
       }
     }
-  }
-
-  String _getReadableErrorMessage(dynamic error, AppLocalizations l10n) {
-    final String msg = error.toString().toLowerCase();
-    if (msg.contains('socketexception') || 
-        msg.contains('failed host lookup') || 
-        msg.contains('clientexception') ||
-        msg.contains('network') ||
-        msg.contains('http') ||
-        msg.contains('connection')) {
-      return l10n.translate('no_internet');
-    }
-    if (msg.contains('fleet_type') || msg.contains('pgrst204')) {
-      return 'System Update Required: Missing fleet_type column in database.';
-    }
-    return error.toString();
   }
 
   void _onSearchChanged(String query) {

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_localizations.dart';
+import '../../core/utils/error_handler.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onLoggedIn;
@@ -54,13 +55,9 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       widget.onLoggedIn();
     } on AuthException catch (e) {
-      setState(() => _error = e.message.contains('Invalid login credentials') 
-        ? l10n.translate('invalid_credentials') : e.message);
+      setState(() => _error = ErrorHandler.getFriendlyMessage(e, context));
     } catch (e) {
-      final errorStr = e.toString();
-      setState(() => _error = (errorStr.contains('SocketException') || errorStr.contains('Failed host lookup'))
-        ? 'No Internet Connection. Please check your data settings.'
-        : l10n.translate('something_went_wrong'));
+      setState(() => _error = ErrorHandler.getFriendlyMessage(e, context));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -75,7 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Google Sign-In Failed. Check your connection.');
+      setState(() => _error = ErrorHandler.getFriendlyMessage(e, context));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
