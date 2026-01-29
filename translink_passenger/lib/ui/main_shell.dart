@@ -19,6 +19,7 @@ class MainShell extends StatefulWidget {
 class MainShellState extends State<MainShell> {
   int _currentIndex = 0; // Home
   final GlobalKey<MapScreenState> _mapScreenKey = GlobalKey<MapScreenState>();
+  final GlobalKey<HomeScreenState> _homeScreenKey = GlobalKey<HomeScreenState>();
   final GlobalKey<AccountScreenState> _accountScreenKey = GlobalKey<AccountScreenState>();
   
   // Draggable Pill state
@@ -27,6 +28,10 @@ class MainShellState extends State<MainShell> {
 
   void setTab(int index, {dynamic argument}) {
     setState(() => _currentIndex = index);
+    
+    if (index == 0) {
+      _homeScreenKey.currentState?.resetCustomOrigin();
+    }
     
     // Defer execution until frame is rendered to ensure currentState is attached
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -49,7 +54,7 @@ class MainShellState extends State<MainShell> {
     final rideProvider = Provider.of<RideProvider>(context);
     
     final pages = <Widget>[
-      const HomeScreen(),
+      HomeScreen(key: _homeScreenKey),
       MapScreen(key: _mapScreenKey),
       const FavouritesScreen(),
       AccountScreen(key: _accountScreenKey),
@@ -74,6 +79,7 @@ class MainShellState extends State<MainShell> {
 
         if (_currentIndex != 0) {
           setState(() => _currentIndex = 0);
+          _homeScreenKey.currentState?.resetCustomOrigin();
         }
       },
       child: Scaffold(

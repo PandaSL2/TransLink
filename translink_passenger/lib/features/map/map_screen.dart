@@ -57,6 +57,8 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   bool _alightAlertTriggered = false;
   bool _anyBusMatch = false;
   StreamSubscription? _busStream;
+  StreamSubscription? _txSubscription;
+  DateTime? _qrOpenTime;
   List<StopModel> _allStops = [];
   late final BusAnimationController _busAnimationController;
   
@@ -121,6 +123,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _busStream?.cancel();
+    _txSubscription?.cancel();
     _busAnimationController.dispose();
     _flutterTts.stop();
     _sheetCtrl.dispose();
@@ -140,7 +143,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   // --- External Methods called by MainShell ---
   void handleNewTripFromHome(TripModel trip) {
     if (trip.destinationName != null && trip.destLat != null) {
-      _searchDestination(trip.destinationName!, gmaps.LatLng(trip.destLat!, trip.destLng!));
+      _searchDestination(trip.destinationName!, gmaps.LatLng(trip.destLat!, trip.destLng!), trip: trip);
     }
   }
 
@@ -375,10 +378,13 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     }
   }
 
-  Future<void> _searchDestination(String label, gmaps.LatLng latLng) async {
+  Future<void> _searchDestination(String label, gmaps.LatLng latLng, {TripModel? trip}) async {
     // Strictly enforce one ride only: Clear any existing state before a new search
     _clearSearch();
     
+    final originLat = trip?.originLat ?? _userPosition?.lat ?? _colombo.lat;
+    final originLng = trip?.originLng ?? _userPosition?.lng ?? _colombo.lng;
+
     setState(() {
       _isLoading = true;
       _destLabel = label;
@@ -387,11 +393,18 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         position: latLng,
         icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(gmaps.BitmapDescriptor.hueRed),
       ));
+      if (trip?.originLat != null && trip?.originLng != null) {
+        _markers.add(gmaps.Marker(
+          markerId: const gmaps.MarkerId('origin_custom'),
+          position: gmaps.LatLng(trip!.originLat!, trip.originLng!),
+          icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(gmaps.BitmapDescriptor.hueGreen),
+        ));
+      }
     });
     
     final transitResults = await _directionsService.getTransitRoute(
-      _userPosition?.lat ?? _colombo.lat, 
-      _userPosition?.lng ?? _colombo.lng,
+      originLat, 
+      originLng,
       latLng.latitude, 
       latLng.longitude
     );
@@ -407,6 +420,24 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         _routes = enrichedRoutes;
         _isLoading = false;
       });
+      
+      // Auto-adjust camera to encompass both the (custom) origin and destination
+      _mapController?.animateCamera(
+        gmaps.CameraUpdate.newLatLngBounds(
+          gmaps.LatLngBounds(
+            southwest: gmaps.LatLng(
+              originLat < latLng.latitude ? originLat : latLng.latitude,
+              originLng < latLng.longitude ? originLng : latLng.longitude,
+            ),
+            northeast: gmaps.LatLng(
+              originLat > latLng.latitude ? originLat : latLng.latitude,
+              originLng > latLng.longitude ? originLng : latLng.longitude,
+            ),
+          ),
+          80.0, // padding
+        ),
+      );
+      
       _sheetCtrl.animateTo(0.5, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
@@ -436,6 +467,32 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         segmentIndex++;
       }
     });
+    
+    // Animate camera to fit the full route
+    if (r.polyline.isNotEmpty) {
+      double minLat = r.polyline[0].lat;
+      double minLng = r.polyline[0].lng;
+      double maxLat = r.polyline[0].lat;
+      double maxLng = r.polyline[0].lng;
+
+      for (final p in r.polyline) {
+        if (p.lat < minLat) minLat = p.lat;
+        if (p.lat > maxLat) maxLat = p.lat;
+        if (p.lng < minLng) minLng = p.lng;
+        if (p.lng > maxLng) maxLng = p.lng;
+      }
+
+      _mapController?.animateCamera(
+        gmaps.CameraUpdate.newLatLngBounds(
+          gmaps.LatLngBounds(
+            southwest: gmaps.LatLng(minLat, minLng),
+            northeast: gmaps.LatLng(maxLat, maxLng),
+          ),
+          80.0, // padding
+        ),
+      );
+    }
+    
     _sheetCtrl.animateTo(0.45, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
@@ -715,6 +772,27 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       return;
     }
 
+    _qrOpenTime = DateTime.now().toUtc();
+
+    _txSubscription?.cancel();
+    _txSubscription = SupabaseService.getTransactionsStream().listen((transactions) {
+      if (!mounted || _qrOpenTime == null) return;
+      
+      // Check for ANY transaction created AFTER we opened the QR modal
+      final newTx = transactions.where((tx) {
+        final createdAt = DateTime.tryParse(tx['created_at'] ?? '');
+        return createdAt != null && createdAt.isAfter(_qrOpenTime!);
+      }).toList();
+
+      if (newTx.isNotEmpty) {
+        // A new transaction was added!
+        _txSubscription?.cancel();
+        _qrOpenTime = null;
+        if (Navigator.canPop(context)) Navigator.pop(context); // Close QR sheet
+        _showPaymentSuccessDialog(r);
+      }
+    });
+
     final destinationName = r.routeName.split(RegExp(r'[→➔]')).last.trim().replaceFirst(RegExp(r'^(Transit to |To )', caseSensitive: false), '');
 
     // JSON format: {"uid": "...", "fare": ..., "dest": "..."}
@@ -798,6 +876,49 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           ],
         ),
       ),
+    ).then((_) {
+      _txSubscription?.cancel();
+    });
+  }
+
+  void _showPaymentSuccessDialog(AiDiscoveredRoute r) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.green, size: 32),
+            const SizedBox(width: 12),
+            Expanded(child: Text('Payment Success', style: GoogleFonts.outfit(fontWeight: FontWeight.bold))),
+          ]
+        ),
+        content: Text(
+          'Your e-ticket for Route ${r.routeNumber ?? ''} has been issued successfully.\n\nDo you want to continue tracking this journey?',
+          style: GoogleFonts.inter(fontSize: 15),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _clearSearch();
+            },
+            child: Text('End Journey', style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text('Continue', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      )
     );
   }
 
@@ -858,7 +979,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     return DraggableScrollableSheet(
       controller: _sheetCtrl,
       initialChildSize: 0.12,
-      minChildSize: 0.08,
+      minChildSize: 0.1,
       maxChildSize: 0.9,
       builder: (context, sc) => Container(
         decoration: BoxDecoration(
@@ -873,19 +994,64 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           ],
           border: Border.all(color: Theme.of(context).dividerColor, width: 1.5),
         ),
-        child: ListView(
-          controller: sc,
-          physics: const BouncingScrollPhysics(),
+        child: Column(
           children: [
-            Center(child: Container(width: 44, height: 5, margin: const EdgeInsets.symmetric(vertical: 16), decoration: BoxDecoration(color: Theme.of(context).dividerColor, borderRadius: BorderRadius.circular(10)))),
-            if (_isLoading) 
-              Center(child: Padding(padding: const EdgeInsets.all(48), child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary, strokeWidth: 3)))
-            else if (selectedRoute != null) 
-              ..._buildRouteDetails(l10n, selectedRoute)
-            else if (_routes.isNotEmpty) 
-              ..._buildDiscovery(l10n)
-            else 
-              _buildEmptySheet(l10n),
+            // Fixed Handle + Dynamic Hint Header
+            GestureDetector(
+              onVerticalDragUpdate: (_) {}, // Let sheet handle it
+              onTap: () => _sheetCtrl.animateTo(0.45, duration: const Duration(milliseconds: 300), curve: Curves.easeOut),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 44, 
+                      height: 5, 
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).dividerColor, 
+                        borderRadius: BorderRadius.circular(10)
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      rideProvider.isRideActive 
+                          ? 'Swipe up to see tracking details' 
+                          : (selectedRoute != null ? 'Swipe up to see full route details' : 'Swipe up for nearby buses & stops'),
+                      style: GoogleFonts.inter(
+                        fontSize: 12, 
+                        fontWeight: FontWeight.w800, 
+                        color: Theme.of(context).colorScheme.primary,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Scrollable Content
+            Expanded(
+              child: ListView(
+                controller: sc,
+                padding: EdgeInsets.zero,
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  if (_isLoading) 
+                    Center(child: Padding(padding: const EdgeInsets.all(48), child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary, strokeWidth: 3)))
+                  else if (selectedRoute != null) 
+                    ..._buildRouteDetails(l10n, selectedRoute)
+                  else if (_routes.isNotEmpty) 
+                    ..._buildDiscovery(l10n)
+                  else 
+                    _buildEmptySheet(l10n),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -1117,6 +1283,15 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                           _clearSearch();
                         } else {
                           rideProvider.startRide(r);
+                          if (_userPosition != null) {
+                            _mapController?.animateCamera(
+                              gmaps.CameraUpdate.newLatLngZoom(
+                                gmaps.LatLng(_userPosition!.lat, _userPosition!.lng), 
+                                16.0
+                              )
+                            );
+                          }
+                          _sheetCtrl.animateTo(0.12, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
                         }
                       },
                       style: ElevatedButton.styleFrom(

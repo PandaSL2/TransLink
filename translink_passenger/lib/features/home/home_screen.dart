@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:geocoding/geocoding.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_localizations.dart';
 import '../../core/services/directions_service.dart';
@@ -11,68 +12,73 @@ import '../../ui/main_shell.dart';
 import '../../models/bus_models.dart';
 import '../ai/ai_chat_screen.dart';
 import '../../core/widgets/tl_bus_stop_card.dart';
-import '../../core/widgets/tl_status_badge.dart';
+import '../../core/widgets/tl_live_board_sheet.dart';
 import 'package:speech_to_text/speech_to_text.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:convert';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  HomeScreenState createState() => HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class HomeScreenState extends State<HomeScreen> {
   final _directionsService = DirectionsService();
   final _locationService = LocationService();
   final SpeechToText _speech = SpeechToText();
-  
+
   List<NearestBusStop> _nearbyStops = [];
-  List<Map<String, String>> _intercityRoutes = [];
-  Set<String> _favoriteIntercity = {};
-  
   bool _isLoadingStops = true;
   bool _isListening = false;
+
+  // GPS reverse-geocoded address shown in the From row
+  String _currentLocationLabel = 'Detecting location...';
+  TripModel? _customOrigin;
 
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
-    _loadIntercityRoutes();
     _loadNearbyStops();
+    _resolveCurrentAddress();
   }
 
-  Future<void> _loadFavorites() async {
-    final prefs = await SharedPreferences.getInstance();
-    final favs = prefs.getStringList('favorite_intercity') ?? [];
-    if (mounted) setState(() => _favoriteIntercity = favs.toSet());
+  void resetCustomOrigin() {
+    if (_customOrigin != null && mounted) {
+      setState(() {
+        _customOrigin = null;
+        _currentLocationLabel = 'Detecting location...';
+      });
+      _resolveCurrentAddress();
+    }
   }
 
-  Future<void> _loadIntercityRoutes() async {
-    final l10n = AppLocalizations.of(context);
-    final routes = [
-      {'num': 'EX 01', 'name': l10n?.translate('colombo_matara') ?? 'Colombo - Matara', 'price': '1,200'},
-      {'num': 'EX 02', 'name': l10n?.translate('colombo_galle') ?? 'Colombo - Galle', 'price': '950'},
-      {'num': 'EX 05', 'name': l10n?.translate('kaduwela_matara') ?? 'Kaduwela - Matara', 'price': '1,450'},
-      {'num': 'EX 08', 'name': l10n?.translate('makumbura_galle') ?? 'Makumbura - Galle', 'price': '850'},
-      {'num': 'EX 12', 'name': l10n?.translate('colombo_kandy') ?? 'Colombo - Kandy', 'price': '1,100'},
-    ];
-    
-    if (mounted) setState(() => _intercityRoutes = routes);
-  }
-
-  Future<void> _toggleFavorite(String routeNum) async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      if (_favoriteIntercity.contains(routeNum)) {
-        _favoriteIntercity.remove(routeNum);
-      } else {
-        _favoriteIntercity.add(routeNum);
+  /// Reverse-geocode the user's GPS position into a human-readable address.
+  Future<void> _resolveCurrentAddress() async {
+    try {
+      final pos = await _locationService.getCurrentLocation();
+      if (pos == null) {
+        if (mounted) setState(() => _currentLocationLabel = 'My Location');
+        return;
       }
-    });
-    await prefs.setStringList('favorite_intercity', _favoriteIntercity.toList());
+      final placemarks = await placemarkFromCoordinates(pos.lat, pos.lng);
+      if (placemarks.isNotEmpty && mounted) {
+        final p = placemarks.first;
+        // Focus on exact locality (e.g. Thalagala instead of Homagama)
+        final parts = [p.street, p.subLocality, p.locality]
+            .where((s) => s != null && s.isNotEmpty)
+            .toList();
+            
+        // Filter out Google Maps plus codes like 'WV2C+43'
+        final cleanParts = parts.where((p) => !p!.contains('+')).toSet().toList();
+        
+        setState(() {
+          _currentLocationLabel = cleanParts.isNotEmpty ? cleanParts.first! : 'My Location';
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _currentLocationLabel = 'My Location');
+    }
   }
 
   void _startListening() async {
@@ -113,7 +119,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (res is TripModel && mounted) {
        final shell = context.findAncestorStateOfType<MainShellState>();
-       if (shell != null) shell.setTab(1, argument: res);
+       if (shell != null) {
+          final enrichedTrip = TripModel(
+             originName: _customOrigin?.destinationName,
+             originLat: _customOrigin?.destLat,
+             originLng: _customOrigin?.destLng,
+             destinationName: res.destinationName,
+             destLat: res.destLat,
+             destLng: res.destLng,
+          );
+          shell.setTab(1, argument: enrichedTrip);
+       }
     }
   }
 
@@ -156,21 +172,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const SizedBox(height: 8),
                   _buildSearchCard(l10n),
-                  const SizedBox(height: 24),
-                  _buildFleetStatus(l10n),
-                  const SizedBox(height: 32),
-                  _buildSectionHeader(l10n.translate('intercity_express') ?? 'Intercity Express', null, l10n),
-                  const SizedBox(height: 16),
-                  _buildIntercityList(l10n),
-                  const SizedBox(height: 32),
-                  _buildSectionHeader(l10n.translate('nearby_stops') ?? 'Nearby Bus Stops', () {
+                  const SizedBox(height: 28),
+                  _buildSectionHeader(l10n.translate('nearby_stops'), () {
                     final shell = context.findAncestorStateOfType<MainShellState>();
                     if (shell != null) shell.setTab(2);
                   }, l10n),
                   const SizedBox(height: 16),
                   _buildNearbyStopsList(l10n),
-                  const SizedBox(height: 32),
-                  _buildSectionHeader(l10n.translate('quick_actions') ?? 'Quick Actions', null, l10n),
+                  const SizedBox(height: 28),
+                  _buildSectionHeader(l10n.translate('quick_actions'), null, l10n),
                   const SizedBox(height: 16),
                   _buildQuickActions(l10n),
                   const SizedBox(height: 48),
@@ -260,6 +270,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchCard(AppLocalizations l10n) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final settings = Provider.of<SettingsProvider>(context);
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
@@ -275,9 +287,21 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       child: Column(
         children: [
-          // From row
+          // ── From row (GPS address, tappable to override) ────────
           GestureDetector(
-            onTap: () => _navigateToSearch(),
+            onTap: () async {
+              final res = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PlaceSearchScreen()),
+              );
+              // If user picked a custom from-location, update label
+              if (res is TripModel && res.destinationName != null && mounted) {
+                setState(() {
+                  _customOrigin = res;
+                  _currentLocationLabel = res.destinationName!;
+                });
+              }
+            },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
               child: Row(
@@ -287,56 +311,38 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.liveGreen,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.liveGreen.withOpacity(0.4), width: 3),
+                      border: Border.all(
+                        color: AppColors.liveGreen.withOpacity(0.35), width: 3),
                     ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      l10n.translate('from_location') ?? 'My Location',
+                      _currentLocationLabel,
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                         color: AppColors.liveGreen,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // Voice button
-                  GestureDetector(
-                    onTap: _startListening,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _isListening
-                            ? AppColors.error.withOpacity(0.1)
-                            : Theme.of(context).colorScheme.primary.withOpacity(0.08),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        _isListening ? Icons.graphic_eq_rounded : Icons.mic_none_rounded,
-                        color: _isListening ? AppColors.error : Theme.of(context).colorScheme.primary,
-                        size: 20,
-                      ),
-                    ),
-                  ),
+                  const Icon(Icons.edit_location_alt_rounded,
+                      size: 16, color: AppColors.liveGreen),
                 ],
               ),
             ),
           ),
-          // Divider with swap icon
-          Row(
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 20),
-                child: Container(
-                  width: 1,
-                  height: 12,
-                  color: Theme.of(context).dividerColor,
-                ),
-              ),
-            ],
+
+          // ── Connector line ──────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.only(left: 24),
+            child: Container(width: 1, height: 10,
+                color: Theme.of(context).dividerColor),
           ),
-          // To row
+
+          // ── To row (search destination + voice mic here) ────────
           GestureDetector(
             onTap: () => _navigateToSearch(),
             child: Padding(
@@ -353,11 +359,39 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      l10n.translate('search_hint') ?? 'Where are you going?',
+                      l10n.translate('search_hint'),
                       style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.6),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurfaceVariant
+                            .withOpacity(0.55),
+                      ),
+                    ),
+                  ),
+                  // Voice button now lives in destination row
+                  GestureDetector(
+                    onTap: _startListening,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _isListening
+                            ? AppColors.error.withOpacity(0.1)
+                            : Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withOpacity(0.08),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isListening
+                            ? Icons.graphic_eq_rounded
+                            : Icons.mic_none_rounded,
+                        color: _isListening
+                            ? AppColors.error
+                            : Theme.of(context).colorScheme.primary,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -365,17 +399,37 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // Quick links
+
+          // ── Quick-place chips ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-            child: Row(
-              children: [
-                _quickSearchChip(Icons.home_rounded, l10n.translate('home_nav') ?? 'Home'),
-                const SizedBox(width: 8),
-                _quickSearchChip(Icons.work_rounded, 'Work'),
-                const SizedBox(width: 8),
-                _quickSearchChip(Icons.star_rounded, l10n.translate('saved_nav') ?? 'Saved'),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _placeChip(
+                    icon: Icons.home_rounded,
+                    label: l10n.translate('home'),
+                    onTap: () => _tapHomeChip(settings, l10n),
+                  ),
+                  const SizedBox(width: 8),
+                  _placeChip(
+                    icon: Icons.work_rounded,
+                    label: l10n.translate('work'),
+                    onTap: () => _tapWorkChip(settings, l10n),
+                  ),
+                  const SizedBox(width: 8),
+                  _placeChip(
+                    icon: Icons.star_rounded,
+                    label: l10n.translate('saved_nav'),
+                    onTap: () {
+                      final shell =
+                          context.findAncestorStateOfType<MainShellState>();
+                      if (shell != null) shell.setTab(2);
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -383,178 +437,98 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _quickSearchChip(IconData icon, String label) {
+  // ── Home chip logic ───────────────────────────────────────────────
+  void _tapHomeChip(SettingsProvider settings, AppLocalizations l10n) async {
+    if (settings.homePlace != null) {
+      // Navigate directly
+      final shell = context.findAncestorStateOfType<MainShellState>();
+      if (shell != null) {
+        shell.setTab(1, argument: TripModel(
+          originName: _customOrigin?.destinationName,
+          originLat: _customOrigin?.destLat,
+          originLng: _customOrigin?.destLng,
+          destinationName: settings.homePlace!.name,
+          destLat: settings.homePlace!.lat,
+          destLng: settings.homePlace!.lng,
+        ));
+      }
+    } else {
+      // Prompt user to set home
+      _showSetPlaceSheet(
+        title: l10n.translate('search_set_home'),
+        icon: Icons.home_rounded,
+        onSave: (place) => settings.setHomePlace(place),
+      );
+    }
+  }
+
+  // ── Work chip logic ───────────────────────────────────────────────
+  void _tapWorkChip(SettingsProvider settings, AppLocalizations l10n) async {
+    if (settings.workPlace != null) {
+      final shell = context.findAncestorStateOfType<MainShellState>();
+      if (shell != null) {
+        shell.setTab(1, argument: TripModel(
+          originName: _customOrigin?.destinationName,
+          originLat: _customOrigin?.destLat,
+          originLng: _customOrigin?.destLng,
+          destinationName: settings.workPlace!.name,
+          destLat: settings.workPlace!.lat,
+          destLng: settings.workPlace!.lng,
+        ));
+      }
+    } else {
+      _showSetPlaceSheet(
+        title: l10n.translate('search_set_work'),
+        icon: Icons.work_rounded,
+        onSave: (place) => settings.setWorkPlace(place),
+      );
+    }
+  }
+
+  // ── Set place bottom sheet ────────────────────────────────────────
+  void _showSetPlaceSheet({
+    required String title,
+    required IconData icon,
+    required Function(SavedPlace) onSave,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _SetPlaceSheet(
+        title: title,
+        icon: icon,
+        onSave: onSave,
+      ),
+    );
+  }
+
+  Widget _placeChip({required IconData icon, required String label, required VoidCallback onTap}) {
     return GestureDetector(
-      onTap: () => _navigateToSearch(),
+      onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.primary.withOpacity(0.07),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.15)),
+          border: Border.all(
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 13, color: Theme.of(context).colorScheme.primary),
-            const SizedBox(width: 5),
+            Icon(icon, size: 14, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 6),
             Text(
               label,
               style: GoogleFonts.inter(
                 fontSize: 12,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildFleetStatus(AppLocalizations l10n) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.primary.withOpacity(0.1), AppColors.primary.withOpacity(0.05)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.hub_rounded, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                l10n.translate('fleet_status') ?? 'Fleet Status',
-                style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 16),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.circle, color: Colors.green, size: 6),
-                    const SizedBox(width: 6),
-                    Text(
-                      'LIVE',
-                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.green),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _fleetStatItem(l10n.translate('ctb_label') ?? 'CTB', '42', AppColors.ctbRed, l10n),
-              const SizedBox(width: 32),
-              _fleetStatItem(l10n.translate('private_label') ?? 'Private', '186', AppColors.privateBlue, l10n),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fleetStatItem(String label, String count, Color color, AppLocalizations l10n) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: color),
-        ),
-        Text(
-          count,
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSurface),
-        ),
-        Text(
-          l10n.translate('active_buses') ?? 'Active Buses',
-          style: GoogleFonts.inter(fontSize: 10, color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildIntercityList(AppLocalizations l10n) {
-    if (_intercityRoutes.isEmpty) return const SizedBox.shrink();
-
-    return SizedBox(
-      height: 140,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: _intercityRoutes.length,
-        itemBuilder: (context, i) {
-          final r = _intercityRoutes[i];
-          final isFav = _favoriteIntercity.contains(r['num']);
-          
-          return GestureDetector(
-            onTap: () => _navigateToSearch(query: r['name']),
-            child: Container(
-              width: 200,
-              margin: const EdgeInsets.only(right: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Theme.of(context).dividerColor),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.secondary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          r['num']!,
-                          style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.w900, color: AppColors.secondary),
-                        ),
-                      ),
-                      IconButton(
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                        icon: Icon(isFav ? Icons.star_rounded : Icons.star_border_rounded, 
-                          color: isFav ? Colors.amber : Colors.grey[400], size: 20),
-                        onPressed: () => _toggleFavorite(r['num']!),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Text(
-                    r['name']!,
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 15),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${l10n.translate('starting_from_rs') ?? 'Starting from Rs.'}${r['price']}',
-                    style: GoogleFonts.inter(fontSize: 12, color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -617,9 +591,6 @@ class _HomeScreenState extends State<HomeScreen> {
       stopName: stop.name,
       walkingMeters: stop.walkingMeters,
       walkingMinutes: stop.walkingMinutes,
-      ctbCount: 0,
-      privateCount: 0,
-      nextBusStatus: BusStatus.arriving,
       onTap: () {
         final shell = context.findAncestorStateOfType<MainShellState>();
         if (shell != null) {
@@ -630,16 +601,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ));
         }
       },
-      onViewBoard: () {
-        final shell = context.findAncestorStateOfType<MainShellState>();
-        if (shell != null) {
-          shell.setTab(1, argument: TripModel(
-            destinationName: stop.name,
-            destLat: stop.lat,
-            destLng: stop.lng,
-          ));
-        }
-      },
+      onViewBoard: () => TLLiveBoardSheet.show(context, stop),
     );
   }
 
@@ -703,6 +665,115 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Set Place Bottom Sheet ────────────────────────────────────────────────────
+/// Shown when user taps Home or Work chip without a saved place.
+/// Lets them search and save their location.
+class _SetPlaceSheet extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final Function(SavedPlace) onSave;
+
+  const _SetPlaceSheet({
+    required this.title,
+    required this.icon,
+    required this.onSave,
+  });
+
+  @override
+  State<_SetPlaceSheet> createState() => _SetPlaceSheetState();
+}
+
+class _SetPlaceSheetState extends State<_SetPlaceSheet> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        left: 24, right: 24, top: 16,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).dividerColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(widget.icon, color: AppColors.primary, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                Navigator.pop(context);
+                final res = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const PlaceSearchScreen(),
+                  ),
+                );
+                if (res is TripModel &&
+                    res.destinationName != null &&
+                    res.destLat != null &&
+                    res.destLng != null) {
+                  widget.onSave(SavedPlace(
+                    name: res.destinationName!,
+                    lat: res.destLat!,
+                    lng: res.destLng!,
+                  ));
+                }
+              },
+              icon: const Icon(Icons.search_rounded),
+              label: const Text('Search a location'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
