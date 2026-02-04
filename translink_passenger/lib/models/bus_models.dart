@@ -469,6 +469,8 @@ class BusRouteSegment {
   final String? headsign;
   final int? numStops;
   final String? operator;
+  final int? departureTimeSeconds;
+  final String? departureTimeText;
 
   BusRouteSegment({
     required this.type,
@@ -484,6 +486,8 @@ class BusRouteSegment {
     this.headsign,
     this.numStops,
     this.operator,
+    this.departureTimeSeconds,
+    this.departureTimeText,
   });
 
   Map<String, dynamic> toJson() => {
@@ -553,9 +557,20 @@ class VirtualBusPosition {
 
 class TripModel {
   final String? id;
+  final String? originName;
+  final double? originLat;
+  final double? originLng;
   final String? destinationName;
   final double? destLat;
   final double? destLng;
 
-  TripModel({this.id, this.destinationName, this.destLat, this.destLng});
+  TripModel({
+    this.id,
+    this.originName,
+    this.originLat,
+    this.originLng,
+    this.destinationName,
+    this.destLat,
+    this.destLng,
+  });
 }

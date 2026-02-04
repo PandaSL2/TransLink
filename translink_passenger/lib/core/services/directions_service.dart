@@ -184,6 +184,8 @@ class DirectionsService {
             headsign: s['transit_details']?['headsign'] as String?,
             numStops: s['transit_details']?['num_stops'] as int?,
             operator: s['transit_details']?['line']?['agencies']?.first?['name'] as String?,
+            departureTimeSeconds: s['transit_details']?['departure_time']?['value'] as int?,
+            departureTimeText: s['transit_details']?['departure_time']?['text'] as String?,
           ));
         }
 
