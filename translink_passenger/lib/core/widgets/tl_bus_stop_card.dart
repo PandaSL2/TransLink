@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import 'tl_fleet_badge.dart';
 import 'tl_status_badge.dart';
+import '../utils/app_localizations.dart';
 
 /// Redesigned bus stop card.
 /// Shows: stop name, walking distance/time, CTB + Private fleet breakdown,
@@ -117,54 +118,9 @@ class TLBusStopCard extends StatelessWidget {
               ),
             ),
 
-            // ── Fleet breakdown ─────────────────────────────
-            if (totalBuses > 0) ...[
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    if (ctbCount > 0) ...[
-                      TLFleetBadge(type: FleetType.ctb, count: ctbCount),
-                      const SizedBox(width: 8),
-                    ],
-                    if (privateCount > 0)
-                      TLFleetBadge(type: FleetType.private, count: privateCount),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-            ],
+            // ── Removed Fleet & Next Arrival ────────────────
+            // Now handled entirely by the Live Board bottom sheet.
 
-            // ── Next arrival ────────────────────────────────
-            if (nextArrivalRoute != null && nextArrivalMinutes != null) ...[
-              Container(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.liveGreen.withOpacity(0.06),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.liveGreen.withOpacity(0.15)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.schedule_rounded, size: 14, color: AppColors.liveGreen),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Route $nextArrivalRoute → $nextArrivalMinutes min',
-                        style: GoogleFonts.inter(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.liveGreen,
-                        ),
-                      ),
-                    ),
-                    if (nextBusStatus != null)
-                      TLStatusBadge(status: nextBusStatus!),
-                  ],
-                ),
-              ),
-            ],
 
             // ── CTA Divider + Button ─────────────────────────
             Divider(height: 1, color: Theme.of(context).dividerColor),
@@ -182,7 +138,7 @@ class TLBusStopCard extends StatelessWidget {
                     const Icon(Icons.live_tv_rounded, color: AppColors.primary, size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      'View Live Board',
+                      AppLocalizations.of(context)?.translate('view_live_buses') ?? 'View Live Buses',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
