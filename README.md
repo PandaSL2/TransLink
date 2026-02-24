@@ -57,10 +57,10 @@ To update credentials, modify these specific constants:
 ## 5. Build & Deployment
 The project is stabilized for production release.
 
-### 📦 **Final Release APKs (V4.0)**
+### 📦 **Final Release APKs (V2.0)**
 Located in the **`build/apks/`** directory:
-- `translink_passenger_v4.apk`: The premium commuter experience with mixed fleet support.
-- `translink_conductor_v4.apk`: The specialized assistant with fleet registration.
+- `translink_passenger_v2.apk`: The premium commuter experience with mixed fleet support.
+- `translink_conductor_v2.apk`: The specialized assistant with fleet registration.
 
 
 
