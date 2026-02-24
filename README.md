@@ -15,7 +15,7 @@ The ecosystem is comprised of two core mobile applications and a serverless back
 
 ---
 
-## 3. Latest Feature Updates (V4.0)
+## 3. Latest Feature Updates (V2.0)
 
 ### 🔴🔵 **Mixed Fleet Synchronization**
 The ecosystem now supports full tracking of both **Private** and **CTB (State)** buses.
