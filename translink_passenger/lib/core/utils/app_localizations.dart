@@ -13,11 +13,17 @@ class AppLocalizations {
     return of(context)?.translate(key) ?? key;
   }
 
-  String translate(String key) {
+  String translate(String key, {Map<String, String>? args}) {
     // Try current locale, then fallback to English, then the key itself
-    return _localizedValues[locale.languageCode]?[key] ?? 
+    String value = _localizedValues[locale.languageCode]?[key] ?? 
            _localizedValues['en']?[key] ?? 
            key;
+    if (args != null) {
+      args.forEach((k, v) {
+        value = value.replaceAll('{$k}', v);
+      });
+    }
+    return value;
   }
 
   static const Map<String, Map<String, String>> _localizedValues = {
@@ -262,6 +268,16 @@ class AppLocalizations {
       'kaduwela_matara': 'Kaduwela - Matara',
       'makumbura_galle': 'Makumbura - Galle',
       'colombo_kandy': 'Colombo - Kandy',
+      'payment_success_title': 'Payment Success',
+      'payment_success_msg': 'Your e-ticket for Route {route} has been issued successfully.\n\nDo you want to continue tracking this journey?',
+      'end_journey': 'End Journey',
+      'continue_journey': 'Continue',
+      'pay_label': 'PAY',
+      'login_to_pay_qr': 'Please login to pay via QR',
+      'swipe_tracking': 'Swipe up to see tracking details',
+      'swipe_route_details': 'Swipe up to see full route details',
+      'swipe_nearby': 'Swipe up for nearby buses & stops',
+      'insufficient_balance_msg': 'Insufficient wallet balance. Please top up your wallet.',
     },
     'si': {
       'settings': 'සැකසුම්',
@@ -496,6 +512,16 @@ class AppLocalizations {
       'kaduwela_matara': 'කඩුවෙල - මාතර',
       'makumbura_galle': 'මාකුඹුර - ගාල්ල',
       'colombo_kandy': 'කොළඹ - මහනුවර',
+      'payment_success_title': 'ගෙවීම සාර්ථකයි',
+      'payment_success_msg': 'මාර්ගය {route} සදහා e-ටිකට්පත නිකුත් කරන ලදී.\\n\\nමෙම ගමන ඔබ අරඹන්නද?',
+      'end_journey': 'ගමන අවසන් කරන්න',
+      'continue_journey': 'ඉදිරියට යන්න',
+      'pay_label': 'ගෙවන්න',
+      'login_to_pay_qr': 'ගෙවීම සදහා QR මගින් පිවිසෙන්න',
+      'swipe_tracking': 'ගමන විස්තර බැලීමට ඉහලට අදින්න',
+      'swipe_route_details': 'මාර්ග විස්තර බැලීමට ඉහලට අදින්න',
+      'swipe_nearby': 'අවට බස් සහ නැවතුම් බැලීමට ඉහලට අදින්න',
+      'insufficient_balance_msg': 'ප්‍රමාණවත් පසුම්බි ශේෂයක් නොමැත. කරුණාකර මුදල් එකතු කරන්න.',
     },
     'ta': {
       'settings': 'அமைப்புகள்',
@@ -722,6 +748,16 @@ class AppLocalizations {
       'onboarding_payment_sub': 'தொந்தரவு இல்லாத பயணத்திற்கு கியூஆர் குறியீடுகளைப் பயன்படுத்தி ஸ்கேன் செய்து பணம் செலுத்துங்கள்.',
       'welcome_title': 'TransLink இற்கு உங்களை வரவேற்கிறோம்',
       'welcome_sub': 'இலங்கையில் பொதுப் போக்குவரத்துக்கான உங்களின் இறுதித் துணையாக இருக்கும்.',
+      'payment_success_title': 'கட்டணம் வெற்றிகரமானது',
+      'payment_success_msg': 'வழி {route} க்கான உங்கள் e-டிக்கெட் வெற்றிகரமாக வழங்கப்பட்டது.\\n\\nஇக் பயணத்தை தொடர்ந்து கண்காணிக்க விரும்புகிறீர்களா?',
+      'end_journey': 'பயணத்தை முடிக்கவும்',
+      'continue_journey': 'தொடரவும்',
+      'pay_label': 'கட்டணம்',
+      'login_to_pay_qr': 'QR மூலம் கட்டணம் செலுத்த உள்நுழைக',
+      'swipe_tracking': 'பயண விவரங்களைக் காண மேலே துழாவுங்கள்',
+      'swipe_route_details': 'மார்க்க விவரங்களைக் காண மேலே துழாவுங்கள்',
+      'swipe_nearby': 'அருகிலுள்ள பேருந்துகள் மற்றும் நிறுத்தங்களைக் காண மேலே துழாவுங்கள்',
+      'insufficient_balance_msg': 'போதிய பணப்பை இருப்பு இல்லை. உங்கள் பணப்பையை நிரப்பவும்.',
     },
   };
 

@@ -43,6 +43,11 @@ class ErrorHandler {
       return 'System Update Required: Please update your app version.';
     }
 
+    // Payment Errors
+    if (msg.contains('insufficient balance')) {
+      return l10n.translate('insufficient_balance_msg');
+    }
+
     // Fallback
     return l10n.translate('something_went_wrong');
   }

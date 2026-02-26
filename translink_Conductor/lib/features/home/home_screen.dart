@@ -143,10 +143,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       int sessionCount = 0;
 
       for (var tx in transactions) {
-        final txDate = DateTime.tryParse(tx['created_at'] ?? '') ?? DateTime(0);
-        if (txDate.isAfter(sessionStart)) {
-          sessionTotal += (tx['amount'] as num).toDouble();
-          sessionCount++;
+        try {
+          final txDate = DateTime.tryParse(tx['created_at'] ?? '') ?? DateTime(0);
+          if (txDate.isAfter(sessionStart)) {
+            final rawAmount = tx['amount'];
+            if (rawAmount != null) {
+              sessionTotal += (rawAmount as num).toDouble();
+              sessionCount++;
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ [Revenue] Skipping malformed tx: $e');
         }
       }
       
@@ -155,6 +162,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _passengerCount = sessionCount;
       });
       debugPrint('💰 [REWRITE] Session Revenue: $sessionTotal ($sessionCount txs) since $sessionStart');
+    }, onError: (e) {
+      debugPrint('🚨 [Revenue Stream Error] $e');
     });
   }
 
@@ -471,7 +480,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   void _showSuccessFeedback(double amount) {
-     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -479,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Payment Success: Rs. ${amount.toStringAsFixed(0)}',
+              l10n.translate('payment_success_msg', args: {'amount': amount.toStringAsFixed(0)}),
               style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16),
             ),
           ),
@@ -904,7 +915,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               settings.languageName,
                               style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF2563EB)),
                             ),
-                            const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF2563EB)),
+                            const Icon(Icons.arrow_drop_down_rounded, color: const Color(0xFF2563EB)),
                             const SizedBox(width: 8),
                           ],
                         ),
@@ -1150,7 +1161,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('FARE (RS.)', style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
+                      Text(l10n.translate('fare_label').toUpperCase(), style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF64748B))),
                       TextField(
                         controller: _manualFareCtrl,
                         keyboardType: TextInputType.number,
@@ -1313,7 +1324,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           TextButton.icon(
             onPressed: _showRevenueHistoryModal,
             icon: const Icon(Icons.history_rounded, color: Color(0xFF10B981), size: 16),
-            label: Text(l10n.translate('view_history') ?? 'VIEW REVENUE HISTORY', 
+            label: Text(l10n.translate('view_history'), 
               style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70, letterSpacing: 0.5)),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1377,7 +1388,11 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
   final GlobalKey _reportKey = GlobalKey();
 
   Future<void> _generateMonthlyReport(Map<String, List<Map<String, dynamic>>> grouped) async {
-    final total = grouped.values.expand((x) => x).fold(0.0, (sum, tx) => sum + (tx['amount'] as num).toDouble());
+    final total = grouped.values.expand((x) => x).fold(0.0, (sum, tx) {
+      try { return sum + ((tx['amount'] as num?)?.toDouble() ?? 0.0); } catch (_) { return sum; }
+    });
+    final l10n = AppLocalizations.of(context)!;
+    final dateStr = DateTime.now().toString().split(' ')[0];
     
     showDialog(
       context: context,
@@ -1395,28 +1410,28 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
               children: [
                 const Icon(Icons.directions_bus_rounded, size: 48, color: Color(0xFF2563EB)),
                 const SizedBox(height: 16),
-                Text('Monthly Revenue Report', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
-                Text('Bus ${widget.busNumber}', style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
+                Text(l10n.translate('monthly_revenue_report'), style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B))),
+                Text('${l10n.translate('bus_label')} ${widget.busNumber}', style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
                 const SizedBox(height: 24),
                 Container(
                   padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
                   decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(16)),
                   child: Column(
                     children: [
-                      Text('Total Earned', style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
+                      Text(l10n.translate('total_earned'), style: GoogleFonts.inter(fontSize: 14, color: Colors.grey[600])),
                       const SizedBox(height: 4),
                       Text('Rs. ${total.toStringAsFixed(0)}', style: GoogleFonts.outfit(fontSize: 32, fontWeight: FontWeight.bold, color: const Color(0xFF10B981))),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-                Text("Generated on ${DateTime.now().toString().split(' ')[0]}", style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[400])),
+                Text(l10n.translate('generated_on', args: {'date': dateStr}), style: GoogleFonts.inter(fontSize: 11, color: Colors.grey[400])),
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.translate('cancel'))),
           ElevatedButton.icon(
             onPressed: () async {
               try {
@@ -1425,7 +1440,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                 final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
                 final pngBytes = byteData!.buffer.asUint8List();
                 final tempDir = await getTemporaryDirectory();
-                final file = File('\${tempDir.path}/Revenue_Report_\${widget.busNumber}.png');
+                final file = File('${tempDir.path}/Revenue_Report_${widget.busNumber}.png');
                 await file.writeAsBytes(pngBytes);
                 // Share.shareXFiles([XFile(file.path)], text: 'Monthly Revenue Report for Bus ${widget.busNumber}');
               } catch (e) {
@@ -1433,7 +1448,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
               }
             },
             icon: const Icon(Icons.download_rounded),
-            label: const Text('Export Image'),
+            label: Text(l10n.translate('export_image')),
           ),
         ],
       ),
@@ -1453,7 +1468,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(l10n.translate('revenue_history') ?? 'Revenue History', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
+              Text(l10n.translate('revenue_history'), style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 16),
@@ -1466,7 +1481,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                 }
                 final list = snapshot.data ?? [];
                 if (list.isEmpty) {
-                  return Center(child: Text(l10n.translate('no_history') ?? 'No history found.'));
+                  return Center(child: Text(l10n.translate('no_history')));
                 }
                 
                 // Group by date (YYYY-MM-DD)

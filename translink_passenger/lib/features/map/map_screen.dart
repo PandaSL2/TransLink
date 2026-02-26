@@ -599,6 +599,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
 
   Widget _buildQuickPayFAB() {
     final rideProvider = Provider.of<RideProvider>(context);
+    final l10n = AppLocalizations.of(context)!;
     final route = rideProvider.activeRoute;
     if (route == null) return const SizedBox.shrink();
 
@@ -616,7 +617,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           Container(
              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
              decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(8)),
-             child: Text('PAY', style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+             child: Text(l10n.translate('pay_label'), style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
           )
         ],
       ),
@@ -763,12 +764,23 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     );
   }
 
-  void _showPaymentQR(AiDiscoveredRoute r) {
+  void _showPaymentQR(AiDiscoveredRoute r) async {
     if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
     final user = SupabaseService.currentUser;
     if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please login to pay via QR')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.translate('login_to_pay_qr'))));
+      return;
+    }
+
+    final currentBalance = await SupabaseService.getWalletBalance();
+    if (currentBalance < r.estimatedFareLkr) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(l10n.translate('insufficient_balance_msg'), style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ));
       return;
     }
 
@@ -882,6 +894,8 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   }
 
   void _showPaymentSuccessDialog(AiDiscoveredRoute r) {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -891,33 +905,57 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           children: [
             const Icon(Icons.check_circle_rounded, color: Colors.green, size: 32),
             const SizedBox(width: 12),
-            Expanded(child: Text('Payment Success', style: GoogleFonts.outfit(fontWeight: FontWeight.bold))),
+            Expanded(child: Text(l10n.translate('payment_success_title'), style: GoogleFonts.outfit(fontWeight: FontWeight.bold))),
           ]
         ),
-        content: Text(
-          'Your e-ticket for Route ${r.routeNumber ?? ''} has been issued successfully.\n\nDo you want to continue tracking this journey?',
-          style: GoogleFonts.inter(fontSize: 15),
-        ),
-        actionsPadding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _clearSearch();
-            },
-            child: Text('End Journey', style: GoogleFonts.inter(color: Colors.grey[600], fontWeight: FontWeight.bold)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              l10n.translate('payment_success_msg', args: {'route': r.routeNumber ?? ''}),
+              style: GoogleFonts.inter(fontSize: 15),
             ),
-            child: Text('Continue', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-        ],
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _clearSearch();
+                    },
+                    icon: const Icon(Icons.stop_circle_rounded, size: 18),
+                    label: Text(l10n.translate('end_journey'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDC2626),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: Text(l10n.translate('continue_journey'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 13)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+        actionsPadding: EdgeInsets.zero,
+        actions: const [],
       )
     );
   }
@@ -1021,8 +1059,8 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                     const SizedBox(height: 8),
                     Text(
                       rideProvider.isRideActive 
-                          ? 'Swipe up to see tracking details' 
-                          : (selectedRoute != null ? 'Swipe up to see full route details' : 'Swipe up for nearby buses & stops'),
+                          ? l10n.translate('swipe_tracking')
+                          : (selectedRoute != null ? l10n.translate('swipe_route_details') : l10n.translate('swipe_nearby')),
                       style: GoogleFonts.inter(
                         fontSize: 12, 
                         fontWeight: FontWeight.w800, 
