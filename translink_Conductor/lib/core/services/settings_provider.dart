@@ -28,7 +28,7 @@ class SettingsProvider extends ChangeNotifier {
     String code = 'en';
     if (name == 'සිංහල') code = 'si';
     if (name == 'தமிழ்') code = 'ta';
-    
+
     _locale = Locale(code);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('language', code);

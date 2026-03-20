@@ -15,7 +15,6 @@ class LocationService {
     ? GeoPosition(_lastPos!.longitude, _lastPos!.latitude, heading: _lastPos!.heading)
     : null;
 
-  // ── Request permissions and get current position ──────────
   Future<GeoPosition?> getCurrentLocation() async {
     const bool isWeb = identical(0, 0.0);
     if (!isWeb) {
@@ -43,18 +42,16 @@ class LocationService {
     }
   }
 
-  // ── Stream (only while app is open – low battery strategy) ─
   Stream<GeoPosition> get locationStream => geo.Geolocator.getPositionStream(
         locationSettings: const geo.LocationSettings(
           accuracy: geo.LocationAccuracy.high,
-          distanceFilter: 20, // update every 20m
+          distanceFilter: 20,
         ),
       ).map((p) {
         _lastPos = p;
         return GeoPosition(p.longitude, p.latitude, heading: p.heading);
       });
 
-  // ── Find stops within 500m (Haversine) ───────────────────
   List<NearbyStop> findNearbyStops(
     GeoPosition userPos,
     List<StopModel> allStops, {

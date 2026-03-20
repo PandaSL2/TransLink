@@ -250,8 +250,8 @@ class AppLocalizations {
   };
 
   String translate(String key, {Map<String, String>? args}) {
-    String value = _localizedValues[locale.languageCode]?[key] ?? 
-                   _localizedValues['en']?[key] ?? 
+    String value = _localizedValues[locale.languageCode]?[key] ??
+                   _localizedValues['en']?[key] ??
                    key;
     if (args != null) {
       args.forEach((k, v) {

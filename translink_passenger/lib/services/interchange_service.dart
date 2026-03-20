@@ -2,7 +2,7 @@
 class TrainRoute {
   final String id;
   final String lineName;
-  final String trainType; // 'Express', 'Slow', 'Intercity'
+  final String trainType;
   final String fromStation;
   final String toStation;
   final List<String> departureTimes;
@@ -20,7 +20,7 @@ class TrainRoute {
 }
 
 class InterchangeService {
-  /// Mock dataset of major Sri Lankan train lines for 2026 integration
+
   static final List<TrainRoute> _slrSchedules = [
     TrainRoute(
       id: 't1',
@@ -51,7 +51,6 @@ class InterchangeService {
     ),
   ];
 
-  /// Find a train interchange for a given destination
   static TrainRoute? findTrainInterchange(String destination) {
     final destLower = destination.toLowerCase();
     if (destLower.contains('gampaha')) return _slrSchedules[0];
@@ -60,7 +59,6 @@ class InterchangeService {
     return null;
   }
 
-  /// Create a multi-modal route suggestion involving a train
   static String getInterchangeInstruction(TrainRoute train) {
     return 'Take ${train.trainType} train (${train.lineName}) from ${train.fromStation}. Next departures: ${train.departureTimes.join(", ")}';
   }

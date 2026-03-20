@@ -8,10 +8,9 @@ class NotificationService {
     const AndroidInitializationSettings android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const DarwinInitializationSettings ios = DarwinInitializationSettings();
     const InitializationSettings settings = InitializationSettings(android: android, iOS: ios);
-    
+
     await _notifications.initialize(settings: settings);
-    
-    // Create channel for high importance notifications
+
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'smart_alerts',
       'Smart Alerts',

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import '../constants/app_constants.dart';
 
-/// Represents a single autocomplete prediction from Google Places API.
 class PlacePrediction {
   final String mainText;
   final String secondaryText;
@@ -28,8 +28,6 @@ class PlacePrediction {
   }
 }
 
-/// Communicates directly with Google Places HTTP APIs.
-/// No JavaScript bridge or web interop — pure HTTP for all platforms.
 class PlacesService {
   static const String _autocompleteBase =
       'https://maps.googleapis.com/maps/api/place/autocomplete/json';
@@ -38,7 +36,6 @@ class PlacesService {
 
   final String _apiKey = AppConstants.googleMapsApiKey;
 
-  /// Returns up to 8 place predictions for [input], restricted to Sri Lanka.
   Future<List<PlacePrediction>> getSuggestions(String input) async {
     final trimmed = input.trim();
     if (trimmed.length < 2) return [];
@@ -62,12 +59,11 @@ class PlacesService {
             .toList();
       }
     } catch (e) {
-      // Silently fail – debounce will retry on next keystroke
+      debugPrint('Error getting place suggestions: $e');
     }
     return [];
   }
 
-  /// Returns the `{lat, lng}` for a given [placeId] from Place Details API.
   Future<Map<String, double>?> getPlaceLocation(String placeId) async {
     if (placeId.isEmpty) return null;
 
@@ -92,7 +88,7 @@ class PlacesService {
         }
       }
     } catch (e) {
-      // Silently fail
+      debugPrint('Error fetching place location: $e');
     }
     return null;
   }

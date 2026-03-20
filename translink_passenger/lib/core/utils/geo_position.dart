@@ -1,5 +1,5 @@
-/// Lightweight coordinate class replacing the Mapbox `Position` type.
-/// Constructor: GeoPosition(lng, lat) — matches Mapbox convention.
+
+
 class GeoPosition {
   final double lng;
   final double lat;

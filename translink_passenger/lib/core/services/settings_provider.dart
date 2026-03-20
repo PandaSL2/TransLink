@@ -2,17 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-/// Age group determines UI density and text scaling.
-/// Based on real Sri Lankan demographic usage patterns.
 enum AgeGroup {
-  young,   // 12–30 : compact, efficient, modern
-  adult,   // 31–45 : standard, balanced
-  senior,  // 46–65 : larger text, more padding, simpler layout
+  young,
+  adult,
+  senior,
 }
 
-/// A saved named place (Home or Work).
 class SavedPlace {
-  final String name;    // Human-readable address
+  final String name;
   final double lat;
   final double lng;
 
@@ -32,15 +29,12 @@ class SettingsProvider with ChangeNotifier {
   bool _locationAutoDetect = true;
   bool _notificationsEnabled = true;
 
-  // ── Age & Scaling ────────────────────────────────────────────────
   AgeGroup _ageGroup = AgeGroup.adult;
-  bool _ageSelected = false;   // false until user explicitly picks on signup
+  bool _ageSelected = false;
 
-  // ── Saved Places ─────────────────────────────────────────────────
   SavedPlace? _homePlace;
   SavedPlace? _workPlace;
 
-  // ── Getters ──────────────────────────────────────────────────────
   ThemeMode get themeMode => _themeMode;
   Locale get locale => _locale;
   String get mapStyle => _mapStyle;
@@ -52,7 +46,6 @@ class SettingsProvider with ChangeNotifier {
   SavedPlace? get homePlace => _homePlace;
   SavedPlace? get workPlace => _workPlace;
 
-  /// Text scale multiplier applied globally via MediaQuery.
   double get textScaleFactor {
     switch (_ageGroup) {
       case AgeGroup.young:  return 1.0;
@@ -61,7 +54,6 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  /// Card/section vertical padding scale.
   double get cardPaddingScale {
     switch (_ageGroup) {
       case AgeGroup.young:  return 1.0;
@@ -70,7 +62,6 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  /// Icon size scale.
   double get iconScale {
     switch (_ageGroup) {
       case AgeGroup.young:  return 1.0;
@@ -86,26 +77,21 @@ class SettingsProvider with ChangeNotifier {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Theme
     final themeStr = prefs.getString('theme_mode') ?? 'system';
     _themeMode = _getThemeModeFromString(themeStr);
 
-    // Language
     final lang = prefs.getString('language') ?? 'English';
     _locale = _getLocaleFromLanguage(lang);
 
-    // Map & Location
     _mapStyle = prefs.getString('map_style') ?? 'Standard';
     _showVirtualBuses = prefs.getBool('show_buses') ?? true;
     _locationAutoDetect = prefs.getBool('location_auto') ?? true;
     _notificationsEnabled = prefs.getBool('notifications') ?? true;
 
-    // Age
     _ageSelected = prefs.getBool('age_selected') ?? false;
     final ageStr = prefs.getString('age_group') ?? 'adult';
     _ageGroup = _ageGroupFromString(ageStr);
 
-    // Saved places
     final homeJson = prefs.getString('home_place');
     if (homeJson != null) {
       try { _homePlace = SavedPlace.fromJson(json.decode(homeJson) as Map<String, dynamic>); } catch (_) {}
@@ -117,8 +103,6 @@ class SettingsProvider with ChangeNotifier {
 
     notifyListeners();
   }
-
-  // ── Age ──────────────────────────────────────────────────────────
 
   AgeGroup _ageGroupFromString(String s) {
     switch (s) {
@@ -137,11 +121,14 @@ class SettingsProvider with ChangeNotifier {
     }
   }
 
-  /// Converts a birth year to the correct AgeGroup.
   static AgeGroup ageGroupFromAge(int age) {
-    if (age <= 30) return AgeGroup.young;
-    if (age <= 45) return AgeGroup.adult;
-    return AgeGroup.senior;  // 46–65
+    if (age <= 30) {
+      return AgeGroup.young;
+    }
+    if (age <= 45) {
+      return AgeGroup.adult;
+    }
+    return AgeGroup.senior;
   }
 
   Future<void> setAgeGroup(AgeGroup group) async {
@@ -152,8 +139,6 @@ class SettingsProvider with ChangeNotifier {
     await prefs.setBool('age_selected', true);
     notifyListeners();
   }
-
-  // ── Saved Places ─────────────────────────────────────────────────
 
   Future<void> setHomePlace(SavedPlace place) async {
     _homePlace = place;
@@ -183,8 +168,6 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // ── Theme / Language / Map ────────────────────────────────────────
-
   ThemeMode _getThemeModeFromString(String themeStr) {
     switch (themeStr) {
       case 'light': return ThemeMode.light;
@@ -204,8 +187,12 @@ class SettingsProvider with ChangeNotifier {
   }
 
   String get languageName {
-    if (_locale.languageCode == 'si') return 'සිංහල';
-    if (_locale.languageCode == 'ta') return 'தமிழ்';
+    if (_locale.languageCode == 'si') {
+      return 'සිංහල';
+    }
+    if (_locale.languageCode == 'ta') {
+      return 'தமிழ்';
+    }
     return 'English';
   }
 
@@ -220,8 +207,11 @@ class SettingsProvider with ChangeNotifier {
     _themeMode = mode;
     final prefs = await SharedPreferences.getInstance();
     String themeStr = 'system';
-    if (mode == ThemeMode.light) themeStr = 'light';
-    else if (mode == ThemeMode.dark) themeStr = 'dark';
+    if (mode == ThemeMode.light) {
+      themeStr = 'light';
+    } else if (mode == ThemeMode.dark) {
+      themeStr = 'dark';
+    }
     await prefs.setString('theme_mode', themeStr);
     notifyListeners();
   }

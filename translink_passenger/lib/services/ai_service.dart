@@ -4,16 +4,12 @@ import 'package:http/http.dart' as http;
 import '../models/bus_models.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// TransLink AI — Groq LLaMA 3.1 as the app's intelligent background brain.
-/// Powers live search suggestions, route prediction, and query correction.
 class AiService {
-  // ── AI engine config ──────────────────────────────────────────
+
   static const _apiKey = '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';
   static const _groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
   static const _model = 'llama-3.1-8b-instant';
 
-  /// Get live search suggestions as user types.
-  /// Returns a list of cleaned stop/destination suggestions.
   static Future<List<String>> getSuggestions({
     required String rawQuery,
     required List<String> availableStops,
@@ -55,7 +51,7 @@ class AiService {
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         final content = data['choices'][0]['message']['content'] as String;
-        // Parse JSON array from response
+
         final trimmed = content.trim();
         final start = trimmed.indexOf('[');
         final end = trimmed.lastIndexOf(']');
@@ -67,8 +63,6 @@ class AiService {
     return _localFallback(rawQuery, availableStops);
   }
 
-  /// Groq-powered route query interpreter.
-  /// Converts natural language like "go to maharagama cheapest" into a clean destination string.
   static Future<String> interpretQuery(String naturalQuery, List<String> stops) async {
     if (naturalQuery.trim().isEmpty) return naturalQuery;
     final stopList = stops.take(50).join(', ');
@@ -101,7 +95,7 @@ class AiService {
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body);
         final result = (data['choices'][0]['message']['content'] as String).trim();
-        if (result.length < 40) return result; // sanity check
+        if (result.length < 40) return result;
       }
     } catch (_) {}
     return naturalQuery;
@@ -128,7 +122,6 @@ class AiService {
     await prefs.setString('groq_api_key', key);
   }
 
-  /// Interactive chat with the AI assistant.
   static Future<String> chat({
     required String userMessage,
     required List<Map<String, String>> history,
@@ -145,6 +138,7 @@ class AiService {
           'role': 'system',
           'content': 'You are TransLink AI, a professional transit assistant for Sri Lanka. '
               'Your mission is to provide clear, direct, and authoritative information about bus routes, fares, and schedules. '
+              'AVAILABLE CONTEXT: Routes: $routeContext. Stops: $stopContext. '
               'CRITICAL INSTRUCTIONS: '
               '1. YOU MUST RESPOND EXCLUSIVELY IN THE FOLLOWING LANGUAGE: **$language**. '
               '2. TONE: Be professional, polite, and clear. Avoid casual or "kid-like" talk. '
@@ -178,7 +172,6 @@ class AiService {
     }
   }
 
-  // ── Local fallback (Levenshtein) ─────────────────────────
   static List<String> _localFallback(String query, List<String> stops) {
     final q = query.toLowerCase();
     final scored = <MapEntry<String, int>>[];
@@ -206,11 +199,12 @@ class AiService {
     for (int j = 0; j <= n; j++) {
       dp[0][j] = j;
     }
-    for (int i = 1; i <= m; i++)
+    for (int i = 1; i <= m; i++) {
       for (int j = 1; j <= n; j++) {
         dp[i][j] = a[i-1] == b[j-1] ? dp[i-1][j-1]
             : 1 + [dp[i-1][j], dp[i][j-1], dp[i-1][j-1]].reduce((a,b) => a<b?a:b);
       }
+    }
     return dp[m][n];
   }
 }

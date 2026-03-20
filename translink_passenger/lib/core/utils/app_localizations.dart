@@ -14,9 +14,9 @@ class AppLocalizations {
   }
 
   String translate(String key, {Map<String, String>? args}) {
-    // Try current locale, then fallback to English, then the key itself
-    String value = _localizedValues[locale.languageCode]?[key] ?? 
-           _localizedValues['en']?[key] ?? 
+
+    String value = _localizedValues[locale.languageCode]?[key] ??
+           _localizedValues['en']?[key] ??
            key;
     if (args != null) {
       args.forEach((k, v) {
@@ -54,7 +54,7 @@ class AppLocalizations {
       'waiting_for_bus': 'Waiting for bus...',
       'live': 'Live',
       'waiting': 'Waiting',
-      // Nav Tabs
+
       'schedule_nav': 'Schedule',
       'explore_nav': 'Explore',
       'home_nav': 'Home',
@@ -63,14 +63,14 @@ class AppLocalizations {
       'nearby_stops': 'Nearby Stops',
       'quick_actions': 'Quick Actions',
       'active_ride': 'Active Ride',
-      // Get Started
+
       'get_started': 'Get Started',
       'live_tracking': 'Live Tracking',
       'timetables': 'Timetables',
       'smart_routes': 'Smart Routes',
       'real_time_tracking': 'Real-time public transport tracking',
       'sri_lanka': 'Sri Lanka',
-      // Login
+
       'welcome_back': 'Welcome back',
       'sign_in_continue': 'Sign in to continue',
       'username': 'Username',
@@ -92,7 +92,7 @@ class AppLocalizations {
       'timeout_msg': 'Connection timed out. Please check your signal and try again.',
       'permission_denied_msg': 'Permission denied. Please check your account status.',
       'Theme Mode': 'Theme Mode',
-      // Account additional
+
       'sign_out': 'Sign Out',
       'profile_info': 'Profile Info',
       'full_name': 'Full Name',
@@ -102,7 +102,7 @@ class AppLocalizations {
       'edit_name': 'Edit Name',
       'save': 'Save',
       'cancel': 'Cancel',
-      // Favourites
+
       'schedule_saved': 'Schedule & Saved',
       'timetable_tab': 'Timetable',
       'saved_routes_tab': 'Saved Routes',
@@ -217,7 +217,7 @@ class AppLocalizations {
       'buy_pass_btn': 'Purchase Pass',
       'live_tracking_badge': 'Live Tracking',
       'mic_permission_required': 'Microphone permission is required for voice assist.',
-      // Missing keys — must never show raw underscore text
+
       'recent_activity': 'Recent Activity',
       'top_up_method': 'Top Up Method',
       'link_new_card': 'Link New Card',
@@ -246,7 +246,7 @@ class AppLocalizations {
       'skip_nav': 'Skip',
       'next_nav': 'Next',
       'get_started_nav': "Let's Go!",
-      // New Onboarding & Fleet
+
       'select_language': 'Select Language',
       'mixed_fleet': 'Mixed Fleet',
       'mixed_fleet_sub': 'Tracking both Private and CTB buses in real-time.',
@@ -490,7 +490,7 @@ class AppLocalizations {
       'skip_nav': 'මඟහරින්න',
       'next_nav': 'මීළඟ',
       'get_started_nav': 'අරඹමු!',
-      // New Onboarding & Fleet
+
       'select_language': 'භාෂාව තෝරන්න',
       'mixed_fleet': 'මිශ්‍ර බස් සේවය',
       'mixed_fleet_sub': 'පෞද්ගලික සහ ලංගම බස් රථ සජීවීව නිරීක්ෂණය කරන්න.',
@@ -734,7 +734,7 @@ class AppLocalizations {
       'skip_nav': 'தவிர்க்க',
       'next_nav': 'அடுத்து',
       'get_started_nav': 'தொடங்குவோம்!',
-      // New Onboarding & Fleet
+
       'select_language': 'மொழியைத் தேர்ந்தெடுக்கவும்',
       'mixed_fleet': 'கலப்பு கடற்படை',
       'mixed_fleet_sub': 'தனியார் மற்றும் இலங்கை போக்குவரத்து சபை பேருந்துகளை நிகழ்நேரத்தில் கண்காணித்தல்.',
@@ -760,7 +760,6 @@ class AppLocalizations {
       'insufficient_balance_msg': 'போதிய பணப்பை இருப்பு இல்லை. உங்கள் பணப்பையை நிரப்பவும்.',
     },
   };
-
 
   static const LocalizationsDelegate<AppLocalizations> delegate = _AppLocalizationsDelegate();
 }

@@ -5,19 +5,16 @@ import '../models/bus_models.dart';
 class OfflineService {
   static const String _starredRoutesKey = 'starred_routes_v2';
 
-  /// Save a route for offline access
   static Future<void> starRoute(AiDiscoveredRoute route) async {
     final prefs = await SharedPreferences.getInstance();
     final starred = await getStarredRoutes();
-    
-    // Check if already starred
+
     if (starred.any((r) => r.id == route.id)) return;
 
     starred.add(route);
     await prefs.setString(_starredRoutesKey, json.encode(starred.map((r) => r.toJson()).toList()));
   }
 
-  /// Remove a route from offline storage
   static Future<void> unstarRoute(String routeId) async {
     final prefs = await SharedPreferences.getInstance();
     final starred = await getStarredRoutes();
@@ -25,7 +22,6 @@ class OfflineService {
     await prefs.setString(_starredRoutesKey, json.encode(starred.map((r) => r.toJson()).toList()));
   }
 
-  /// Get all starred routes for offline usage
   static Future<List<AiDiscoveredRoute>> getStarredRoutes() async {
     final prefs = await SharedPreferences.getInstance();
     final data = prefs.getString(_starredRoutesKey);
@@ -39,7 +35,6 @@ class OfflineService {
     }
   }
 
-  /// Check if a specific route is available offline
   static Future<bool> isStarred(String routeId) async {
     final starred = await getStarredRoutes();
     return starred.any((r) => r.id == routeId);

@@ -11,21 +11,18 @@ class HolidayService {
   HolidayService._internal();
 
   static const String _cacheKey = 'translink_holidays';
-  Set<String> _holidayDates = {}; // "YYYY-MM-DD"
+  Set<String> _holidayDates = {};
 
-  // ── Load holidays from cache then Supabase ─────────────────
   Future<void> init() async {
     await _loadFromCache();
     await _fetchAndSync(DateTime.now().year);
   }
 
-  // ── Check if a date is a holiday ──────────────────────────
   bool isHoliday(DateTime date) {
     final key = _dateKey(date);
     return _holidayDates.contains(key);
   }
 
-  // ── Fetch from nager.at and sync to Supabase ──────────────
   Future<void> _fetchAndSync(int year) async {
     try {
       final url = Uri.parse(
@@ -40,11 +37,9 @@ class HolidayService {
 
         _holidayDates = holidays.map((h) => _dateKey(h.holidayDate)).toSet();
 
-        // Persist to SharedPreferences
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_cacheKey, jsonEncode(_holidayDates.toList()));
 
-        // Upsert to Supabase
         final rows = holidays.map((h) => {
               'holiday_date': _dateKey(h.holidayDate),
               'name': h.name,
@@ -54,7 +49,7 @@ class HolidayService {
         await SupabaseService.upsertHolidays(rows);
       }
     } catch (_) {
-      // Use cached data if network fails
+
     }
   }
 

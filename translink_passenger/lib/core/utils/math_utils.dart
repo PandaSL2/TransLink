@@ -3,9 +3,7 @@ import '../utils/geo_position.dart';
 import '../constants/app_constants.dart';
 
 class MathUtils {
-  // ─────────────────────────────────────────────
-  // Haversine formula (returns distance in metres)
-  // ─────────────────────────────────────────────
+
   static double haversineDistance(double lat1, double lng1, double lat2, double lng2) {
     const double toRad = pi / 180.0;
     final double dLat = (lat2 - lat1) * toRad;
@@ -13,19 +11,14 @@ class MathUtils {
     final double a = sin(dLat / 2) * sin(dLat / 2) +
         cos(lat1 * toRad) * cos(lat2 * toRad) * sin(dLng / 2) * sin(dLng / 2);
     final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return AppConstants.earthRadiusKm * c * 1000; // return in metres
+    return AppConstants.earthRadiusKm * c * 1000;
   }
 
-  // ─────────────────────────────────────────────
-  // Interpolate position along a polyline
-  // progress: 0.0 → 1.0
-  // ─────────────────────────────────────────────
   static GeoPosition interpolatePolyline(List<GeoPosition> polyline, double progress) {
     if (polyline.isEmpty) return const GeoPosition(79.8612, 6.9271);
     if (progress <= 0.0) return polyline.first;
     if (progress >= 1.0) return polyline.last;
 
-    // Calculate total distance
     double totalDist = 0.0;
     final List<double> segLengths = [];
     for (int i = 0; i < polyline.length - 1; i++) {
@@ -55,9 +48,6 @@ class MathUtils {
     return polyline.last;
   }
 
-  // ─────────────────────────────────────────────
-  // Route directness: does target lie ahead on route from userStop?
-  // ─────────────────────────────────────────────
   static bool isDestinationAhead(
     List<GeoPosition> polyline,
     GeoPosition userPosition,
@@ -84,9 +74,6 @@ class MathUtils {
     return nearest;
   }
 
-  // ─────────────────────────────────────────────
-  // Minimum distance from a point to a polyline (metres)
-  // ─────────────────────────────────────────────
   static double pointToPolylineDistance(GeoPosition point, List<GeoPosition> polyline) {
     if (polyline.isEmpty) return double.infinity;
     double minDist = double.infinity;
@@ -99,17 +86,14 @@ class MathUtils {
     return minDist;
   }
 
-  // ─────────────────────────────────────────────
-  // Route Scoring Algorithm
-  // ─────────────────────────────────────────────
   static double calculateRouteScore({
     required double waitingMinutes,
     required double walkingMeters,
     required double durationMinutes,
-    required double directnessRatio, // 0–1, 1 = perfectly direct
-    required double congestionFactor, // 0–1, 0 = no congestion
+    required double directnessRatio,
+    required double congestionFactor,
   }) {
-    // Normalise each factor 0-100
+
     final double waitScore = _normalise(waitingMinutes, 0, 30, invert: true);
     final double walkScore = _normalise(walkingMeters, 0, 800, invert: true);
     final double durationScore = _normalise(durationMinutes, 0, 120, invert: true);
@@ -129,9 +113,6 @@ class MathUtils {
     return invert ? 100 - norm : norm;
   }
 
-  // ─────────────────────────────────────────────
-  // Decode Google Maps Encoded Polyline Algorithm
-  // ─────────────────────────────────────────────
   static List<GeoPosition> decodeEncodedPolyline(String encoded) {
     List<GeoPosition> poly = [];
     int index = 0, len = encoded.length;

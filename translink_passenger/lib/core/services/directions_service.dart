@@ -5,8 +5,6 @@ import 'package:translink_passenger/core/constants/app_constants.dart';
 import 'package:translink_passenger/core/utils/math_utils.dart';
 import 'package:translink_passenger/models/bus_models.dart';
 
-/// Communicates with Google Directions + Places APIs.
-/// This version is a "Clean Google-First" engine with ZERO hardcoded corridor logic.
 class DirectionsService {
   static const String _directionsUrl =
       'https://maps.googleapis.com/maps/api/directions/json';
@@ -15,14 +13,9 @@ class DirectionsService {
 
   final String _apiKey = AppConstants.googleMapsApiKey;
 
-  // Simple static cache for zero latency refresh
   static List<NearestBusStop>? _cachedStops;
   static double? _lastCacheLat;
   static double? _lastCacheLng;
-
-  // ─────────────────────────────────────────────────────────────────
-  // FIND NEAREST BUS STOP
-  // ─────────────────────────────────────────────────────────────────
 
   Future<NearestBusStop?> findNearestBusStop(double userLat, double userLng) async {
     final uri = Uri.parse(
@@ -36,7 +29,6 @@ class DirectionsService {
       final results = data['results'] as List<dynamic>? ?? [];
       if (results.isEmpty) return null;
 
-      // Pick the nearest result
       Map<String, dynamic>? nearest;
       double nearestDist = double.infinity;
       for (final r in results) {
@@ -66,7 +58,7 @@ class DirectionsService {
   }
 
   Future<List<NearestBusStop>> findNearbyBusStops(double userLat, double userLng) async {
-    // Check cache first (within 200m radius of last cache)
+
     if (_cachedStops != null && _lastCacheLat != null && _lastCacheLng != null) {
       final dist = MathUtils.haversineDistance(userLat, userLng, _lastCacheLat!, _lastCacheLng!);
       if (dist < 200) {
@@ -99,22 +91,18 @@ class DirectionsService {
           placeId: r['place_id'] as String?,
         ));
       }
-      
+
       stops.sort((a, b) => a.walkingMeters.compareTo(b.walkingMeters));
       _cachedStops = stops.take(10).toList();
       _lastCacheLat = userLat;
       _lastCacheLng = userLng;
-      
+
       return _cachedStops!;
     } catch (e) {
       debugPrint('🚌 findNearbyBusStops error: $e');
       return _cachedStops ?? [];
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────
-  // GOOGLE TRANSIT ROUTE (Pure Pass-Through)
-  // ─────────────────────────────────────────────────────────────────
 
   Future<List<GoogleRouteResult>> getTransitRoute(
     double originLat, double originLng,
@@ -152,12 +140,9 @@ class DirectionsService {
           final poly     = MathUtils.decodeEncodedPolyline(pts);
 
           String instruction = s['html_instructions']?.toString().replaceAll(RegExp(r'<[^>]*>'), '') ?? '';
-          
-          // --- Human-Friendly Instruction Polish ---
-          // Catch EVERYTHING that looks like a Plus Code (e.g. WVP3+P27) 
-          // including surrounding "Walk to" text Google might provide.
+
           final plusCodePattern = RegExp(r'.*?[A-Z0-9]{4,}\+[A-Z0-9]{2,}.*?', caseSensitive: false);
-          
+
           if (plusCodePattern.hasMatch(instruction)) {
             final nextStep = (i + 1 < steps.length) ? steps[i + 1] : null;
             if (nextStep != null && nextStep['transit_details'] != null) {
@@ -166,7 +151,7 @@ class DirectionsService {
             } else if (i == steps.length - 1) {
               instruction = 'Walk to Destination';
             } else {
-              instruction = 'Walk to Destination'; // Safe fallback
+              instruction = 'Walk to Destination';
             }
           }
 
@@ -196,15 +181,12 @@ class DirectionsService {
         ));
       }
 
-      // --- PRIORITIZATION: Direct Routes First ---
-      // Sort alternatives by the number of transitions (fewer bus segments is better)
       results.sort((a, b) {
         final aBusCount = a.segments.where((s) => s.type == SegmentType.bus).length;
         final bBusCount = b.segments.where((s) => s.type == SegmentType.bus).length;
-        
+
         if (aBusCount != bBusCount) return aBusCount.compareTo(bBusCount);
-        
-        // Secondary sort: Total duration
+
         return a.totalDurationMinutes.compareTo(b.totalDurationMinutes);
       });
 
@@ -218,31 +200,24 @@ class DirectionsService {
 
   String? _cleanRouteNumber(String? raw) {
     if (raw == null || raw.isEmpty) return null;
-    // Extract only the first word/number (e.g. "138", "128A")
-    // This stops "280 ➔ Colombo-Matara" from breaking the badge.
+
     final first = raw.split(' ').first;
-    // Cap it at 32 chars to allow full city names like "Colombo" (7 chars)
+
     if (first.length > 32) return first.substring(0, 32);
     return first;
   }
-
-  // ─────────────────────────────────────────────────────────────────
-  // BUILD ROUTE CARD (Zero-Override Enrichment)
-  // ─────────────────────────────────────────────────────────────────
 
   Future<AiDiscoveredRoute> buildBusRoute({
     required GoogleRouteResult transit,
     required String destLabel,
   }) async {
-    // Use Google's details exclusively - NO database enrichment
+
     final busSegments = transit.segments.where((s) => s.type == SegmentType.bus).toList();
-    
-    // Support multiple transit transfers
+
     final List<String> gNums = busSegments.map((s) => s.routeNumber ?? 'Bus').toList();
     final List<String> cleanNums = gNums.map((n) => n.toUpperCase().trim()).toList();
     final String complexRouteNumber = cleanNums.join(' ➔ ');
-    
-    // Multi-bus name: Use Google's headsigns or names
+
     String complexRouteName = "";
     if (busSegments.length > 1) {
       final List<String> names = [];
@@ -262,7 +237,7 @@ class DirectionsService {
 
     final totalSegTime = transit.segments.fold(0, (sum, seg) => sum + seg.durationMin);
     final busCount = busSegments.length;
-    // Real duration = sum of segments + transfer buffer (5m per bus)
+
     final totalDuration = totalSegTime + (busCount * 5);
 
     return AiDiscoveredRoute(
@@ -281,8 +256,8 @@ class DirectionsService {
       peakFrequencyMinutes: 15,
       offPeakFrequencyMinutes: 30,
       currentlyRunning: true,
-      notes: busSegments.length > 1 
-          ? 'Multi-Bus Transit' 
+      notes: busSegments.length > 1
+          ? 'Multi-Bus Transit'
           : (transit.segments.any((s) => s.type == SegmentType.walking) ? 'Includes walking' : 'Direct bus'),
       score: 100,
       segments: transit.segments,

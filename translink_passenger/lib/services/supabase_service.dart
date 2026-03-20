@@ -5,7 +5,6 @@ import 'package:translink_passenger/models/bus_models.dart';
 class SupabaseService {
   static final SupabaseClient client = Supabase.instance.client;
 
-  // ── AUTH ──────────────────────────────────────────────────
   static Future<AuthResponse> signIn(String email, String password) {
     return client.auth.signInWithPassword(email: email, password: password);
   }
@@ -17,14 +16,13 @@ class SupabaseService {
   static Stream<AuthState> get authStateChanges =>
       client.auth.onAuthStateChange;
 
-  // ── ROUTES ────────────────────────────────────────────────
   static Future<List<RouteModel>> getActiveRoutes() async {
     try {
       final res = await client
           .from('routes')
           .select()
           .order('route_number');
-          
+
       final list = res as List;
       return list
           .map((e) {
@@ -45,7 +43,6 @@ class SupabaseService {
     }
   }
 
-  // ── ROUTE VARIANTS ────────────────────────────────────────
   static Future<List<RouteVariantModel>> getRouteVariants(String routeId) async {
     final res = await client
         .from('route_variants')
@@ -59,13 +56,11 @@ class SupabaseService {
     return (res as List).map((e) => RouteVariantModel.fromJson(e)).toList();
   }
 
-  // ── STOPS ─────────────────────────────────────────────────
   static Future<List<StopModel>> getAllStops() async {
     final res = await client.from('stops').select().eq('is_active', true);
     return (res as List).map((e) => StopModel.fromJson(e)).toList();
   }
 
-  // ── ROUTE STOP SEQUENCES ──────────────────────────────────
   static Future<List<RouteStopSequenceModel>> getRouteStopSequences(
       String routeVariantId) async {
     final res = await client
@@ -76,7 +71,6 @@ class SupabaseService {
     return (res as List).map((e) => RouteStopSequenceModel.fromJson(e)).toList();
   }
 
-  // ── SERVICE PROFILES ──────────────────────────────────────
   static Future<List<ServiceProfileModel>> getServiceProfiles(
       String routeId) async {
     final res = await client
@@ -87,7 +81,6 @@ class SupabaseService {
     return (res as List).map((e) => ServiceProfileModel.fromJson(e)).toList();
   }
 
-  // ── FIXED DEPARTURES ──────────────────────────────────────
   static Future<List<FixedDepartureModel>> getFixedDepartures(
       String routeVariantId, String dayType) async {
     final res = await client
@@ -100,7 +93,6 @@ class SupabaseService {
     return (res as List).map((e) => FixedDepartureModel.fromJson(e)).toList();
   }
 
-  // ── HOLIDAY PROFILES ──────────────────────────────────────
   static Future<List<HolidayScheduleProfileModel>> getHolidayProfiles(
       String routeId) async {
     final res = await client
@@ -113,7 +105,6 @@ class SupabaseService {
         .toList();
   }
 
-  // ── HOLIDAYS ──────────────────────────────────────────────
   static Future<bool> isHoliday(DateTime date) async {
     final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
     final res = await client
@@ -128,7 +119,6 @@ class SupabaseService {
     await client.from('holidays').upsert(holidays, onConflict: 'holiday_date');
   }
 
-  // ── FAVOURITES ────────────────────────────────────────────
   static Future<List<FavouriteModel>> getFavourites() async {
     final uid = currentUser?.id;
     if (uid == null) return [];
@@ -158,7 +148,6 @@ class SupabaseService {
         .eq('route_id', routeId);
   }
 
-  // ── WAITING PASSENGERS ────────────────────────────────────
   static Future<void> updateWaitingStatus(String? routeNumber, {double? lat, double? lng}) async {
     final uid = currentUser?.id;
     if (uid == null) return;
@@ -177,7 +166,6 @@ class SupabaseService {
     }, onConflict: 'user_id');
   }
 
-  // ── LIVE BUSES ─────────────────────────────────────────────
   static Stream<List<LiveBusData>> getLiveBusesStream() {
     return client
         .from('live_bus_positions')
@@ -188,8 +176,8 @@ class SupabaseService {
               .map((json) {
                 final lastStr = json['last_updated_at'] ?? '';
                 final lastUpdate = DateTime.tryParse(lastStr) ?? DateTime.now().toUtc();
-                final isStale = now.difference(lastUpdate).inMinutes > 10; 
-                
+                final isStale = now.difference(lastUpdate).inMinutes > 10;
+
                 return LiveBusData(
                   busNumber: json['bus_number'] ?? '',
                   lat: (json['latitude'] as num? ?? 0.0).toDouble(),
@@ -211,7 +199,6 @@ class SupabaseService {
         });
   }
 
-  // ── PAYMENTS & WALLET ─────────────────────────────────────
   static Stream<double> getWalletStream() {
     final uid = currentUser?.id;
     if (uid == null) return Stream.value(0.0);
@@ -294,7 +281,7 @@ class SupabaseService {
   static Future<void> topUpWallet(double amount) async {
     final uid = currentUser?.id;
     if (uid == null) return;
-    
+
     try {
       final walletRes = await client.from('passenger_wallets').select('balance').eq('user_id', uid).maybeSingle();
       if (walletRes != null) {
@@ -310,7 +297,7 @@ class SupabaseService {
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         });
       }
-      
+
       await client.from('fare_transactions').insert({
         'passenger_id': uid,
         'amount': amount,

@@ -10,26 +10,19 @@ import '../core/constants/driver_constants.dart';
 import 'depot_detection_service.dart';
 import 'route_schedule_service.dart';
 import 'supabase_service.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
-/// GPS broadcast interval (seconds) — used by both foreground and background.
 const int _kBroadcastIntervalSeconds = 5;
 const int _kScheduleCheckIntervalMinutes = 2;
 
 class LocationService {
-  // ── Foreground timer (primary broadcast mechanism) ─────────────────────────
-  // This runs while the app is open and guarantees broadcasting even when
-  // the background service fails to start (Android OEM restrictions).
+
   static Timer? _foregroundTimer;
 
-  // ── Background service web fallback ────────────────────────────────────────
   static Timer? _webTimer;
 
   static DateTime _lastScheduleCheck = DateTime.fromMillisecondsSinceEpoch(0);
   static Position? _lastBroadcastPos;
-
-  // ─────────────────────────────────────────────────── Background service setup
 
   static Future<void> initializeService() async {
     if (kIsWeb) return;
@@ -72,18 +65,13 @@ class LocationService {
     return true;
   }
 
-  // ─────────────────────────────────────────────── Platform-agnostic public API
-
   static Future<bool> isTracking() async {
     if (kIsWeb) return _webTimer != null;
-    // Tracking if either the foreground timer OR background service is running.
+
     final bgRunning = await FlutterBackgroundService().isRunning();
     return _foregroundTimer != null || bgRunning;
   }
 
-  /// Start broadcasting GPS.
-  /// 1. Starts the foreground timer immediately (works in all conditions).
-  /// 2. Also tries to start the background service (keeps working when app is closed).
   static Future<void> startTracking({String? accessToken, String? refreshToken}) async {
     if (kIsWeb) {
       _webTimer ??= Timer.periodic(
@@ -93,40 +81,35 @@ class LocationService {
       return;
     }
 
-    // 1. Recover session if not provided
     if (accessToken == null) {
       final session = SupabaseService.currentSession;
       accessToken = session?.accessToken;
       refreshToken = session?.refreshToken;
     }
 
-    // 2. Acquire partial wakelock to ensure CPU doesn't sleep in Doze mode
     WakelockPlus.enable();
 
     final prefs = await SharedPreferences.getInstance();
     final busNumber = prefs.getString(DriverConstants.keyBusNumber) ?? '';
 
-    // 3. Purge any existing live position for this bus BEFORE starting new broadcast.
     if (busNumber.isNotEmpty) {
-      // Don't await indefinitely, but give it a bit of time to clear "ghost" markers
+
       await SupabaseService.removeLivePosition(busNumber).timeout(const Duration(seconds: 2), onTimeout: () {});
       debugPrint('🧹 Cleaned up stale ghost session for bus $busNumber');
     }
 
-    // 4. Foreground timer: backup strategy
     _foregroundTimer?.cancel();
     _foregroundTimer = Timer.periodic(
       const Duration(seconds: _kBroadcastIntervalSeconds),
       (_) => _performGpsTick(null, null),
     );
 
-    // 5. Background service: keeps running when app is minimised/killed
     final service = FlutterBackgroundService();
-    
+
     if (!await service.isRunning()) {
       try {
         await service.startService();
-        // If background service starts successfully, we don't need the foreground timer
+
         _foregroundTimer?.cancel();
         _foregroundTimer = null;
       } catch (e) {
@@ -134,28 +117,25 @@ class LocationService {
       }
     }
 
-    // 6. PERSISTENT HANDOVER: Save tokens so background isolate can recover them immediately
     if (accessToken != null) {
       await prefs.setString('supabase_access_token', accessToken);
       if (refreshToken != null) {
         await prefs.setString('supabase_refresh_token', refreshToken);
       }
-      
+
       service.invoke('updateSession', {
         'accessToken': accessToken,
         'refreshToken': refreshToken,
       });
     }
 
-    // 7. Trigger first tick immediately (don't wait interval)
     unawaited(Future.delayed(const Duration(milliseconds: 1000), () => _performGpsTick(null, null)));
   }
 
   static Future<void> stopTracking() async {
-    // Release wakelock
+
     if (!kIsWeb) WakelockPlus.disable();
 
-    // Cancel foreground timer
     _foregroundTimer?.cancel();
     _foregroundTimer = null;
 
@@ -170,14 +150,12 @@ class LocationService {
       return;
     }
 
-    // Stop background service
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
       service.invoke('stopService');
     }
   }
 
-  /// Manually fetch current GPS position.
   static Future<Position?> getCurrentLocation() async {
     try {
       return await Geolocator.getCurrentPosition(
@@ -189,15 +167,12 @@ class LocationService {
     }
   }
 
-  // ──────────────────────────────────────────────── Background service entry point
-
   @pragma('vm:entry-point')
   static void onStart(ServiceInstance service) async {
     ui.DartPluginRegistrant.ensureInitialized();
-    WakelockPlus.enable(); // Essential for background isolate
+    WakelockPlus.enable();
     final notif = FlutterLocalNotificationsPlugin();
 
-    // Each background isolate needs its own Supabase init.
     await SupabaseService.initialize();
 
     service.on('stopService').listen((_) => service.stopSelf());
@@ -207,7 +182,6 @@ class LocationService {
       }
     });
 
-    // ✅ BOOT-UP AUTH RECOVERY: Read persisted tokens immediately
     final initialPrefs = await SharedPreferences.getInstance();
     final savedToken = initialPrefs.getString('supabase_access_token');
     final savedRefresh = initialPrefs.getString('supabase_refresh_token');
@@ -219,10 +193,10 @@ class LocationService {
     _lastScheduleCheck = DateTime.fromMillisecondsSinceEpoch(0);
 
     Timer.periodic(const Duration(seconds: _kBroadcastIntervalSeconds), (timer) async {
-      // ✅ RESILIENCE: Verify we still WANT to be tracking (persisted in prefs)
+
       final prefs = await SharedPreferences.getInstance();
       final isTracking = prefs.getBool(DriverConstants.keyIsTracking) ?? false;
-      
+
       if (!isTracking) {
         timer.cancel();
         WakelockPlus.disable();
@@ -230,7 +204,6 @@ class LocationService {
         return;
       }
 
-      // Check for session in background if not set
       if (SupabaseService.currentSession == null) {
         debugPrint('⏳ Background isolate waiting for session...');
       }
@@ -240,15 +213,11 @@ class LocationService {
         timer.cancel();
         WakelockPlus.disable();
         await Future.delayed(const Duration(seconds: 3));
-        service.stopSelf(); 
+        service.stopSelf();
       }
     });
   }
 
-  // ─────────────────────────────────────────────────── Core GPS broadcast tick
-
-  /// One GPS fetch + Supabase push cycle.
-  /// [service] and [notif] are null when called from the foreground timer.
   static Future<bool> _performGpsTick(
     ServiceInstance? service,
     FlutterLocalNotificationsPlugin? notif,
@@ -269,7 +238,6 @@ class LocationService {
 
     final headway = prefs.getInt(DriverConstants.keyHeadwayMinutes) ?? 20;
 
-    // ── Schedule / operating-hours check (every 2 min) ────────────────────────
     final now = DateTime.now();
     if (now.difference(_lastScheduleCheck).inMinutes >= _kScheduleCheckIntervalMinutes) {
       _lastScheduleCheck = now;
@@ -281,7 +249,7 @@ class LocationService {
         _updateNotificationSafe(service, notif,
             title: 'Shift Ended — Route $routeNum',
             body:  'Tracking stopped. Have a safe journey home!');
-        return false; // Stop background service loop
+        return false;
       }
 
       final minsLeft = RouteScheduleService.minutesUntilLastBus(routeNum);
@@ -292,8 +260,7 @@ class LocationService {
       }
     }
     try {
-      // ── GPS broadcast ─────────────────────────────────────────────────────────
-      // ✅ RECOVERY: Use a simpler fetch without strict AndroidSettings timeout for the first fix
+
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.high,
@@ -307,31 +274,28 @@ class LocationService {
       final currentSpeed = pos.speed < 0 ? 0.0 : pos.speed;
       final speedKmph = currentSpeed * 3.6;
 
-      // 🛑 ADVANCED ANTI-JITTER & RANGE FILTER
       if (_lastBroadcastPos != null) {
         final dist = Geolocator.distanceBetween(
           _lastBroadcastPos!.latitude, _lastBroadcastPos!.longitude,
           pos.latitude, pos.longitude,
         );
 
-        // 1. Dead Band: If shifted < 10m while moving slow, it's likely GPS noise.
-        // This keeps the bus icon perfectly still at bus stops.
         if (dist < 10.0 && speedKmph < 5.0) {
           lat = _lastBroadcastPos!.latitude;
           lng = _lastBroadcastPos!.longitude;
           heading = _lastBroadcastPos!.heading;
         } else {
-          // 2. Linear Smoothing (LERP): Average with last known to prevent "jumps"
+
           lat = (_lastBroadcastPos!.latitude + pos.latitude) / 2;
           lng = (_lastBroadcastPos!.longitude + pos.longitude) / 2;
-          // Only update heading if moved significantly to avoid spinning
+
           if (dist < 2.0 && speedKmph < 2.0) {
             heading = _lastBroadcastPos!.heading;
           }
           _lastBroadcastPos = Position(
-            latitude: lat, longitude: lng, timestamp: pos.timestamp, 
-            accuracy: pos.accuracy, altitude: pos.altitude, heading: heading, 
-            speed: pos.speed, speedAccuracy: pos.speedAccuracy, 
+            latitude: lat, longitude: lng, timestamp: pos.timestamp,
+            accuracy: pos.accuracy, altitude: pos.altitude, heading: heading,
+            speed: pos.speed, speedAccuracy: pos.speedAccuracy,
             altitudeAccuracy: pos.altitudeAccuracy, headingAccuracy: pos.headingAccuracy,
           );
         }
@@ -354,7 +318,6 @@ class LocationService {
       int batteryLevel = 100;
       try { batteryLevel = await Battery().batteryLevel; } catch (_) {}
 
-      // ✅ Write to Supabase with smoothed coords
       final error = await SupabaseService.updateLivePosition(
         busNumber:      busNumber,
         routeNumber:    routeNum,
@@ -376,11 +339,6 @@ class LocationService {
         }
       }
 
-      // ❌ REMOVED: Auto-setting keyIsTracking = true.
-      // This caused the "Auto-Restart" bug because it would overwrite a manual stop during a race condition.
-      // await prefs.setBool(DriverConstants.keyIsTracking, true);
-
-      // Update notification (background mode only)
       if (service != null && notif != null) {
         final schedule = RouteScheduleService.getSchedule(routeNum);
         String notifBody = switch (busStatus) {
@@ -415,8 +373,6 @@ class LocationService {
     }
     return true;
   }
-
-  // ───────────────────────────────────────────────────────── Notification helper
 
   static void _updateNotificationSafe(
     ServiceInstance? service,
