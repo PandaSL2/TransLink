@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
-import 'tl_fleet_badge.dart';
 import 'tl_status_badge.dart';
 import '../utils/app_localizations.dart';
 
-/// Redesigned bus stop card.
-/// Shows: stop name, walking distance/time, CTB + Private fleet breakdown,
-/// next arrival, and a "View Live Board" CTA.
 class TLBusStopCard extends StatelessWidget {
   final String stopName;
   final int walkingMeters;
@@ -37,7 +33,7 @@ class TLBusStopCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final totalBuses = ctbCount + privateCount;
+
 
     return GestureDetector(
       onTap: onTap,
@@ -49,7 +45,7 @@ class TLBusStopCard extends StatelessWidget {
           border: Border.all(color: Theme.of(context).dividerColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -58,7 +54,7 @@ class TLBusStopCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header row ────────────────────────────────────
+
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
               child: Row(
@@ -68,7 +64,7 @@ class TLBusStopCard extends StatelessWidget {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.1),
+                      color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
@@ -118,11 +114,6 @@ class TLBusStopCard extends StatelessWidget {
               ),
             ),
 
-            // ── Removed Fleet & Next Arrival ────────────────
-            // Now handled entirely by the Live Board bottom sheet.
-
-
-            // ── CTA Divider + Button ─────────────────────────
             Divider(height: 1, color: Theme.of(context).dividerColor),
             InkWell(
               onTap: onViewBoard,

@@ -1,43 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Semantic color system for TransLink.
-/// Rules:
-/// - [primary]     → Trust, navigation, headers, active UI
-/// - [cta]         → ONE primary action button per screen ONLY (never info/nav)
-/// - [ctbRed]      → CTB fleet badge/icon ONLY (never large area fills)
-/// - [privateBlue] → Private fleet badge/icon ONLY
-/// - [liveGreen]   → Active / arriving status
-/// - [delayedAmber]→ Delayed / warning status
 class AppColors {
-  // ── Brand ───────────────────────────────────────────────────────────────
-  static const Color primary     = Color(0xFF1D4ED8); // Deep Blue — trust, navigation
+
+  static const Color primary     = Color(0xFF1D4ED8);
   static const Color primaryDark = Color(0xFF1E40AF);
 
-  // ── CTA (Call-To-Action — use on ONE button per screen ONLY) ───────────
-  static const Color cta         = Color(0xFFF97316); // Orange — confirms action
+  static const Color cta         = Color(0xFFF97316);
 
-  // Legacy alias kept for backward compat (maps to cta)
   static const Color secondary   = Color(0xFFF97316);
 
-  // ── Fleet Branding (badge/icon use ONLY — not large fills) ─────────────
-  static const Color ctbRed      = Color(0xFFC62828); // CTB buses
-  static const Color privateBlue = Color(0xFF1565C0); // Private buses
+  static const Color ctbRed      = Color(0xFFC62828);
+  static const Color privateBlue = Color(0xFF1565C0);
 
-  // ── Semantic Status ─────────────────────────────────────────────────────
-  static const Color liveGreen    = Color(0xFF16A34A); // Active / arriving
-  static const Color delayedAmber = Color(0xFFD97706); // Delayed / warning
-  static const Color accent       = Color(0xFF16A34A); // alias for liveGreen
+  static const Color liveGreen    = Color(0xFF16A34A);
+  static const Color delayedAmber = Color(0xFFD97706);
+  static const Color accent       = Color(0xFF16A34A);
   static const Color error        = Color(0xFFEF4444);
 
-  // ── Light Mode ──────────────────────────────────────────────────────────
   static const Color backgroundLight    = Color(0xFFF1F5F9);
   static const Color surfaceLight       = Color(0xFFFFFFFF);
   static const Color textPrimaryLight   = Color(0xFF0F172A);
   static const Color textSecondaryLight = Color(0xFF64748B);
   static const Color dividerLight       = Color(0xFFE2E8F0);
 
-  // ── Dark Mode ───────────────────────────────────────────────────────────
   static const Color backgroundDark    = Color(0xFF020617);
   static const Color surfaceDark       = Color(0xFF0F172A);
   static const Color surfaceVariantDark= Color(0xFF1E293B);
@@ -46,7 +32,6 @@ class AppColors {
   static const Color dividerDark       = Color(0xFF334155);
 }
 
-/// Spacing constants based on 8pt grid.
 class AppSpacing {
   static const double xs   = 4;
   static const double sm   = 8;
@@ -64,7 +49,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.backgroundLight,
       cardColor: AppColors.surfaceLight,
       dividerColor: AppColors.dividerLight,
-      
+
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         onPrimary: Colors.white,
@@ -77,13 +62,13 @@ class AppTheme {
         error: AppColors.error,
         outline: AppColors.dividerLight,
       ),
-      
+
       textTheme: _buildTextTheme(
         displayColor: AppColors.textPrimaryLight,
         bodyColor: AppColors.textPrimaryLight,
         secondaryColor: AppColors.textSecondaryLight,
       ),
-      
+
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.surfaceLight,
         surfaceTintColor: Colors.transparent,
@@ -94,11 +79,11 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: AppColors.textPrimaryLight, size: 24),
       ),
-      
+
       elevatedButtonTheme: _buildButtonTheme(AppColors.primary, Colors.white),
       outlinedButtonTheme: _buildOutlinedButtonTheme(AppColors.primary),
       inputDecorationTheme: _buildInputTheme(AppColors.textSecondaryLight, AppColors.primary),
-      
+
       bottomSheetTheme: const BottomSheetThemeData(
         backgroundColor: AppColors.surfaceLight,
         surfaceTintColor: Colors.transparent,
@@ -116,11 +101,11 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.backgroundDark,
       cardColor: AppColors.surfaceDark,
       dividerColor: AppColors.dividerDark,
-      
+
       colorScheme: const ColorScheme.dark(
-        primary: Color(0xFF60A5FA), // High-visibility blue for dark
+        primary: Color(0xFF60A5FA),
         onPrimary: Color(0xFF020617),
-        secondary: Color(0xFFFBBF24), // High-visibility amber
+        secondary: Color(0xFFFBBF24),
         onSecondary: Color(0xFF020617),
         surface: AppColors.surfaceDark,
         onSurface: AppColors.textPrimaryDark,
@@ -129,13 +114,13 @@ class AppTheme {
         error: AppColors.error,
         outline: AppColors.dividerDark,
       ),
-      
+
       textTheme: _buildTextTheme(
         displayColor: AppColors.textPrimaryDark,
         bodyColor: AppColors.textPrimaryDark,
         secondaryColor: AppColors.textSecondaryDark,
       ),
-      
+
       appBarTheme: AppBarTheme(
         backgroundColor: AppColors.backgroundDark,
         surfaceTintColor: Colors.transparent,
@@ -146,7 +131,7 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: AppColors.textPrimaryDark, size: 24),
       ),
-      
+
       elevatedButtonTheme: _buildButtonTheme(const Color(0xFF60A5FA), const Color(0xFF020617)),
       outlinedButtonTheme: _buildOutlinedButtonTheme(const Color(0xFF60A5FA)),
       inputDecorationTheme: _buildInputTheme(AppColors.textSecondaryDark, const Color(0xFF60A5FA)),
@@ -224,11 +209,11 @@ class AppTheme {
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: hintColor.withOpacity(0.3)),
+        borderSide: BorderSide(color: hintColor.withValues(alpha: 0.3)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: hintColor.withOpacity(0.3)),
+        borderSide: BorderSide(color: hintColor.withValues(alpha: 0.3)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),

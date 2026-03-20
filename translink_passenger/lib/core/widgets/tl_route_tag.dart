@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 enum RouteTag { fastest, cheapest, quieter }
 
-/// A chip that labels a route option for intelligent comparison.
 class TLRouteTag extends StatelessWidget {
   final RouteTag tag;
 

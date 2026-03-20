@@ -4,8 +4,6 @@ import '../theme/app_theme.dart';
 
 enum FleetType { ctb, private }
 
-/// A small pill badge showing fleet type (CTB or Private) and bus count.
-/// Per design system: use ONLY for fleet indicators — never as a large fill.
 class TLFleetBadge extends StatelessWidget {
   final FleetType type;
   final int count;
@@ -24,7 +22,7 @@ class TLFleetBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

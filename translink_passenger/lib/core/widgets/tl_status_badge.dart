@@ -4,8 +4,6 @@ import '../theme/app_theme.dart';
 
 enum BusStatus { arriving, delayed, full, onRoute }
 
-/// Displays the real-time status of a bus arrival.
-/// Arriving: pulsing green. Delayed: amber. Full: red. On Route: blue.
 class TLStatusBadge extends StatefulWidget {
   final BusStatus status;
   final String? delayMinutes;
@@ -58,7 +56,7 @@ class _TLStatusBadgeState extends State<TLStatusBadge>
           if (widget.status == BusStatus.arriving)
             AnimatedBuilder(
               animation: _pulseAnim,
-              builder: (_, __) => Opacity(
+              builder: (context, child) => Opacity(
                 opacity: _pulseAnim.value,
                 child: Icon(config.icon, color: config.color, size: 10),
               ),

@@ -17,32 +17,30 @@ class MainShell extends StatefulWidget {
 }
 
 class MainShellState extends State<MainShell> {
-  int _currentIndex = 0; // Home
+  int _currentIndex = 0;
   final GlobalKey<MapScreenState> _mapScreenKey = GlobalKey<MapScreenState>();
   final GlobalKey<HomeScreenState> _homeScreenKey = GlobalKey<HomeScreenState>();
   final GlobalKey<AccountScreenState> _accountScreenKey = GlobalKey<AccountScreenState>();
-  
-  // Draggable Pill state
-  Offset _pillPosition = const Offset(20, 0); // X follows left constraint, Y from bottom
+
+  Offset _pillPosition = const Offset(20, 0);
   bool _isPillInitialized = false;
 
   void setTab(int index, {dynamic argument}) {
     setState(() => _currentIndex = index);
-    
+
     if (index == 0) {
       _homeScreenKey.currentState?.resetCustomOrigin();
     }
-    
-    // Defer execution until frame is rendered to ensure currentState is attached
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (index == 1 && _mapScreenKey.currentState != null) {
         if (argument != null && argument is TripModel) {
           _mapScreenKey.currentState!.handleNewTripFromHome(argument);
         } else {
-          // restoreFromPrefs removed as per cleanup
+
         }
       }
-      // If navigating to Account tab and QR flag is set
+
       if (index == 3 && argument == 'openQR') {
         _accountScreenKey.currentState?.openPaymentQR();
       }
@@ -52,7 +50,7 @@ class MainShellState extends State<MainShell> {
   @override
   Widget build(BuildContext context) {
     final rideProvider = Provider.of<RideProvider>(context);
-    
+
     final pages = <Widget>[
       HomeScreen(key: _homeScreenKey),
       MapScreen(key: _mapScreenKey),
@@ -61,7 +59,7 @@ class MainShellState extends State<MainShell> {
     ];
 
     if (!_isPillInitialized) {
-      // Default to near bottom-right
+
       _pillPosition = Offset(20, MediaQuery.of(context).size.height - 180);
       _isPillInitialized = true;
     }
@@ -70,11 +68,10 @@ class MainShellState extends State<MainShell> {
       canPop: _currentIndex == 0,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        
-        // Custom logic: If on Map tab and search is active, clear search first
+
         if (_currentIndex == 1 && _mapScreenKey.currentState != null) {
           final cleared = _mapScreenKey.currentState!.tryClearSearch();
-          if (cleared) return; // Handled, don't change tab
+          if (cleared) return;
         }
 
         if (_currentIndex != 0) {
@@ -99,7 +96,7 @@ class MainShellState extends State<MainShell> {
                 onDragUpdate: (details) {
                   setState(() {
                     _pillPosition += details.delta;
-                    // Clamp to screen bounds
+
                     final screen = MediaQuery.of(context).size;
                     _pillPosition = Offset(
                       _pillPosition.dx.clamp(0.0, screen.width - 250),
@@ -128,7 +125,7 @@ class MainShellState extends State<MainShell> {
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: AppColors.primary.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             )
@@ -155,14 +152,14 @@ class MainShellState extends State<MainShell> {
 
   Widget _buildBottomNav() {
     final l10n = AppLocalizations.of(context)!;
-    
+
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         border: Border(top: BorderSide(color: Theme.of(context).dividerColor, width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
             blurRadius: 20,
             offset: const Offset(0, -4),
           )
@@ -201,7 +198,7 @@ class MainShellState extends State<MainShell> {
         constraints: const BoxConstraints(minWidth: 64),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? activeColor.withOpacity(0.1) : Colors.transparent,
+          color: isActive ? activeColor.withValues(alpha: 0.1) : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Column(

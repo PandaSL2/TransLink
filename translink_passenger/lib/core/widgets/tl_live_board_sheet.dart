@@ -4,8 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/directions_service.dart';
 import '../../models/bus_models.dart';
 
-/// Bottom sheet shown when user taps "View Live Board" on a bus stop card.
-/// Fetches transit routes that pass through this stop using Google Directions API.
 class TLLiveBoardSheet extends StatefulWidget {
   final NearestBusStop stop;
 
@@ -58,13 +56,13 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
     setState(() { _loading = true; _error = null; });
 
     try {
-      // Use multiple common Sri Lanka landmark destinations to extract diverse routes
+
       final landmarks = [
-        // Colombo Fort (lat, lng)
+
         (6.9355, 79.8503),
-        // Maharagama (lat, lng)
+
         (6.8480, 79.9260),
-        // Kandy (lat, lng)
+
         (7.2906, 80.6337),
       ];
 
@@ -72,29 +70,26 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
       final routes = <_RouteInfo>[];
 
       for (final dest in landmarks) {
-        if (routes.length >= 6) break; // enough routes
+        if (routes.length >= 6) break;
         try {
           final results = await _service.getTransitRoute(
             widget.stop.lat, widget.stop.lng,
             dest.$1, dest.$2,
           );
           for (final r in results) {
-            // CRUCIAL FIX: Only take the very FIRST bus segment of the entire trip.
-            // If the route goes Thalagala -> Kottawa (129) -> Galle (EX1), we ONLY
-            // want to show 129 because that's the only one at THIS stop.
+
             final firstBusSeg = r.segments.where((s) => s.type == SegmentType.bus).firstOrNull;
-            
+
             if (firstBusSeg != null && firstBusSeg.routeNumber != null) {
               final key = firstBusSeg.routeNumber!;
               if (!seen.contains(key)) {
                 seen.add(key);
-                
-                // Calculate accurate ETA based on actual Google Maps departure time
-                int eta = firstBusSeg.durationMin; // Fallback if no departure time
+
+                int eta = firstBusSeg.durationMin;
                 if (firstBusSeg.departureTimeSeconds != null) {
                   final nowSecs = DateTime.now().millisecondsSinceEpoch ~/ 1000;
                   eta = (firstBusSeg.departureTimeSeconds! - nowSecs) ~/ 60;
-                  if (eta < 0) eta = 0; // If it's already departing, show 0 (Due)
+                  if (eta < 0) eta = 0;
                 }
 
                 routes.add(_RouteInfo(
@@ -136,7 +131,7 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // ── Handle ──────────────────────────────────────────────
+
           const SizedBox(height: 12),
           Container(
             width: 40, height: 4,
@@ -147,7 +142,6 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
           ),
           const SizedBox(height: 16),
 
-          // ── Header ──────────────────────────────────────────────
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Row(
@@ -155,7 +149,7 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.departure_board_rounded,
@@ -186,15 +180,15 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
                     ],
                   ),
                 ),
-                // Live indicator
+
                 AnimatedBuilder(
                   animation: _pulseAnim,
-                  builder: (_, __) => Opacity(
+                  builder: (context, child) => Opacity(
                     opacity: _pulseAnim.value,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
-                        color: AppColors.liveGreen.withOpacity(0.12),
+                        color: AppColors.liveGreen.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Row(
@@ -221,7 +215,6 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
 
           Divider(height: 24, color: Theme.of(context).dividerColor),
 
-          // ── Route List ───────────────────────────────────────────
           Flexible(
             child: _loading
                 ? _buildLoading()
@@ -290,7 +283,7 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.directions_bus_rounded, size: 40,
-              color: Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.4)),
+              color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.4)),
           const SizedBox(height: 12),
           Text(
             'No bus routes found near this stop',
@@ -310,9 +303,9 @@ class _TLLiveBoardSheetState extends State<TLLiveBoardSheet>
       shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: 20),
       itemCount: _routes.length,
-      separatorBuilder: (_, __) => Divider(
+      separatorBuilder: (context, index) => Divider(
         height: 1,
-        color: Theme.of(context).dividerColor.withOpacity(0.5),
+        color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
       ),
       itemBuilder: (context, i) {
         final route = _routes[i];
@@ -346,7 +339,7 @@ class _RouteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Determine if CTB or Private based on route number convention
+
     final isCTB = route.operator?.toLowerCase().contains('ctb') == true ||
         route.operator?.toLowerCase().contains('sri lanka') == true;
     final badgeColor = isCTB ? AppColors.ctbRed : AppColors.privateBlue;
@@ -356,13 +349,13 @@ class _RouteRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 14),
       child: Row(
         children: [
-          // Route number badge
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: badgeBg,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: badgeColor.withOpacity(0.3)),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
             ),
             child: Text(
               route.routeNumber,
@@ -375,7 +368,6 @@ class _RouteRow extends StatelessWidget {
           ),
           const SizedBox(width: 14),
 
-          // Headsign & operator
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -402,15 +394,14 @@ class _RouteRow extends StatelessWidget {
             ),
           ),
 
-          // Duration
           AnimatedBuilder(
             animation: pulse,
-            builder: (_, __) => Opacity(
+            builder: (context, child) => Opacity(
               opacity: pulse.value,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
-                  color: AppColors.liveGreen.withOpacity(0.1),
+                  color: AppColors.liveGreen.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
