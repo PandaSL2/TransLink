@@ -1,9 +1,7 @@
--- Migration 010: Real Route Seeding (Fixed UUID Syntax)
--- =========================================================================
 
--- Ensure the routes table has the necessary columns for operating hours
-DO $$ 
-BEGIN 
+
+DO $$
+BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='routes' AND column_name='first_bus') THEN
         ALTER TABLE public.routes ADD COLUMN first_bus TEXT DEFAULT '05:30';
     END IF;
@@ -12,7 +10,6 @@ BEGIN
     END IF;
 END $$;
 
--- Clean slate for these routes
 DELETE FROM public.route_stop_sequences WHERE route_variant_id IN (
     SELECT id FROM public.route_variants WHERE route_id IN (
         SELECT id FROM public.routes WHERE route_number IN ('128', '129', '280', '138', '120', '122', '125')
@@ -23,7 +20,6 @@ DELETE FROM public.route_variants WHERE route_id IN (
 );
 DELETE FROM public.routes WHERE route_number IN ('128', '129', '280', '138', '120', '122', '125');
 
--- 1. STOPS (Common set)
 INSERT INTO public.stops (id, name, lat, lng) VALUES
 ('b0128000-0000-0000-0000-000000000001', 'Kottawa Junction',          6.8455, 80.0027),
 ('b0128000-0000-0000-0000-000000000002', 'Malapalla (Makumbura)',     6.8395, 80.0055),
@@ -93,7 +89,6 @@ INSERT INTO public.stops (id, name, lat, lng) VALUES
 ('b0280000-0000-0000-0000-000000000026', 'Horana',                    6.7158, 80.0631)
 ON CONFLICT (id) DO UPDATE SET lat = EXCLUDED.lat, lng = EXCLUDED.lng;
 
--- 2. ROUTES
 INSERT INTO public.routes (id, route_number, name, color_hex, first_bus, last_bus) VALUES
 ('12800000-0000-0000-0000-000000000000', '128', 'Kottawa – Thalagala via Homagama', '#F97316', '05:30', '21:00'),
 ('12900000-0000-0000-0000-000000000000', '129', 'Kottawa – Moragahahena via Homagama', '#2563EB', '05:30', '21:30'),
@@ -103,7 +98,6 @@ INSERT INTO public.routes (id, route_number, name, color_hex, first_bus, last_bu
 ('12200000-0000-0000-0000-000000000000', '122', 'Avissawella – Pettah', '#F59E0B', '04:00', '22:30'),
 ('12500000-0000-0000-0000-000000000000', '125', 'Padukka – Pettah', '#10B981', '05:00', '21:00');
 
--- 3. ROUTE VARIANTS
 INSERT INTO public.route_variants (id, route_id, direction, origin_name, destination_name, base_duration_minutes) VALUES
 ('12800000-0000-0000-0000-000000000001', '12800000-0000-0000-0000-000000000000', 'outbound', 'Kottawa', 'Thalagala', 45),
 ('12800000-0000-0000-0000-000000000002', '12800000-0000-0000-0000-000000000000', 'inbound',  'Thalagala', 'Kottawa', 45),
@@ -118,9 +112,7 @@ INSERT INTO public.route_variants (id, route_id, direction, origin_name, destina
 ('13800000-0000-0000-0000-000000000005', '13800000-0000-0000-0000-000000000000', 'outbound', 'Maharagama', 'Pettah', 60),
 ('13800000-0000-0000-0000-000000000006', '13800000-0000-0000-0000-000000000000', 'inbound',  'Pettah', 'Maharagama', 60);
 
--- (Stops sequences omitted for space, assuming 128 outbound as example)
 INSERT INTO public.route_stop_sequences (route_variant_id, stop_id, sequence_order) VALUES
 ('12800000-0000-0000-0000-000000000001', 'b0128000-0000-0000-0000-000000000001', 1),
 ('12800000-0000-0000-0000-000000000001', 'b0128000-0000-0000-0000-000000000002', 2),
 ('12800000-0000-0000-0000-000000000001', 'b0128000-0000-0000-0000-000000000003', 3);
--- ...

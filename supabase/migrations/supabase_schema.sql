@@ -1,12 +1,4 @@
--- ============================================================
--- TransLink Unified Schema  (v3 — corrected & production-ready)
--- Run this ENTIRE script in the Supabase SQL Editor.
--- Safe to re-run: all CREATE statements use IF NOT EXISTS
--- and all inserts use ON CONFLICT DO NOTHING.
--- ============================================================
 
--- 1. CORE ROUTE TABLES
--- ============================================================
 
 CREATE TABLE IF NOT EXISTS routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -51,9 +43,6 @@ CREATE TABLE IF NOT EXISTS route_stop_sequences (
     UNIQUE(route_variant_id, sequence_order)
 );
 
--- 2. SERVICE PROFILE TABLES
--- ============================================================
-
 CREATE TABLE IF NOT EXISTS service_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     route_id UUID REFERENCES routes(id) ON DELETE CASCADE,
@@ -68,7 +57,6 @@ CREATE TABLE IF NOT EXISTS service_profiles (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Backfill any missing columns on service_profiles
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='service_profiles' AND column_name='profile_name') THEN
@@ -103,11 +91,6 @@ CREATE TABLE IF NOT EXISTS fixed_departures (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. LIVE TRACKING TABLE (written by driver app, read by passenger app)
--- ============================================================
--- PRIMARY KEY = bus_number (one row per physical bus)
--- is_active   = true while driver is broadcasting, row deleted on shift end
-
 CREATE TABLE IF NOT EXISTS live_bus_positions (
     bus_number       TEXT PRIMARY KEY,
     route_number     TEXT NOT NULL,
@@ -123,16 +106,14 @@ CREATE TABLE IF NOT EXISTS live_bus_positions (
     driver_id        UUID REFERENCES auth.users(id)
 );
 
--- Backfill: earlier schema versions may be missing columns — safe no-op if they exist
 DO $$
 BEGIN
-    -- (No is_active in this table anymore — we DELETE rows on shift end instead)
-    -- Ensure driver_id column exists
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name='live_bus_positions' AND column_name='driver_id') THEN
         ALTER TABLE live_bus_positions ADD COLUMN driver_id UUID REFERENCES auth.users(id);
     END IF;
-    -- Ensure next_bus_due_at column exists
+
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns
                    WHERE table_name='live_bus_positions' AND column_name='next_bus_due_at') THEN
         ALTER TABLE live_bus_positions ADD COLUMN next_bus_due_at TIMESTAMP WITH TIME ZONE;
@@ -147,9 +128,6 @@ CREATE TABLE IF NOT EXISTS driver_profiles (
     last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. ROW LEVEL SECURITY
--- ============================================================
-
 ALTER TABLE routes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE route_variants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stops ENABLE ROW LEVEL SECURITY;
@@ -159,7 +137,6 @@ ALTER TABLE fixed_departures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_bus_positions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE driver_profiles ENABLE ROW LEVEL SECURITY;
 
--- Public read
 DROP POLICY IF EXISTS "Public read routes"           ON routes;
 CREATE POLICY "Public read routes"          ON routes           FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Public read variants"          ON route_variants;
@@ -177,9 +154,6 @@ CREATE POLICY "Public read live buses"       ON live_bus_positions FOR SELECT US
 DROP POLICY IF EXISTS "Public read driver profiles"   ON driver_profiles;
 CREATE POLICY "Public read driver profiles"  ON driver_profiles  FOR SELECT USING (true);
 
--- Drivers write live positions — fully open (anon key required, no auth needed).
--- live_bus_positions only holds non-sensitive GPS data; real access control
--- is via the anon key which is embedded in the app.
 DROP POLICY IF EXISTS "Drivers insert live"  ON live_bus_positions;
 CREATE POLICY "Drivers insert live"  ON live_bus_positions
     FOR INSERT WITH CHECK (true);
@@ -192,7 +166,6 @@ DROP POLICY IF EXISTS "Drivers delete live"  ON live_bus_positions;
 CREATE POLICY "Drivers delete live"  ON live_bus_positions
     FOR DELETE USING (true);
 
--- Driver profiles
 DROP POLICY IF EXISTS "Drivers insert profile" ON driver_profiles;
 CREATE POLICY "Drivers insert profile" ON driver_profiles FOR INSERT WITH CHECK (true);
 DROP POLICY IF EXISTS "Drivers update profile" ON driver_profiles;
@@ -200,11 +173,6 @@ CREATE POLICY "Drivers update profile" ON driver_profiles FOR UPDATE USING (true
 DROP POLICY IF EXISTS "Drivers delete profile" ON driver_profiles;
 CREATE POLICY "Drivers delete profile" ON driver_profiles FOR DELETE USING (true);
 
--- 5. SEED ROUTES (all routes that driver app supports)
--- ============================================================
-
--- Step A: Remove duplicate route_number rows — keep only the one with the highest id.
--- Required when old schema runs inserted the same route more than once.
 DELETE FROM routes
 WHERE id NOT IN (
     SELECT DISTINCT ON (route_number) id
@@ -212,7 +180,6 @@ WHERE id NOT IN (
     ORDER BY route_number, id DESC
 );
 
--- Step B: Safely add the unique constraint now the table is clean.
 DO $$ BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_constraint
@@ -237,7 +204,6 @@ INSERT INTO routes (route_number, name) VALUES
     ('131', 'Colombo - Ratmalana')
 ON CONFLICT DO NOTHING;
 
--- Seed basic stops (safe no-op if exist)
 INSERT INTO stops (name, lat, lng) VALUES
     ('Pettah Main Bus Stand',    6.9369, 79.8503),
     ('Fort Railway Station',     6.9330, 79.8510),
@@ -252,8 +218,6 @@ INSERT INTO stops (name, lat, lng) VALUES
     ('Ratmalana Bus Stand',      6.8218, 79.8832)
 ON CONFLICT DO NOTHING;
 
--- Seed route variants for routes used in driver app
--- 128: Kottawa → Thalagala (outbound/inbound)
 INSERT INTO route_variants (route_id, direction, origin_name, destination_name, base_duration_minutes, polyline_coords)
 SELECT id, 'outbound', 'Kottawa', 'Thalagala', 45,
     '[[80.0027,6.8453],[80.0044,6.8401],[80.0200,6.8200],[80.0380,6.8100],[80.0550,6.7820]]'::jsonb
@@ -266,7 +230,6 @@ SELECT id, 'inbound', 'Thalagala', 'Kottawa', 45,
 FROM routes WHERE route_number = '128'
 AND NOT EXISTS (SELECT 1 FROM route_variants rv JOIN routes r ON rv.route_id=r.id WHERE r.route_number='128' AND rv.direction='inbound');
 
--- 280: Maharagama → Horana (outbound/inbound)
 INSERT INTO route_variants (route_id, direction, origin_name, destination_name, base_duration_minutes, polyline_coords)
 SELECT id, 'outbound', 'Maharagama', 'Horana', 60,
     '[[79.9282,6.8469],[79.9450,6.8300],[79.9700,6.8100],[80.0100,6.7800],[80.0600,6.7150]]'::jsonb
@@ -279,7 +242,6 @@ SELECT id, 'inbound', 'Horana', 'Maharagama', 60,
 FROM routes WHERE route_number = '280'
 AND NOT EXISTS (SELECT 1 FROM route_variants rv JOIN routes r ON rv.route_id=r.id WHERE r.route_number='280' AND rv.direction='inbound');
 
--- 138: Maharagama → Colombo (outbound/inbound)
 INSERT INTO route_variants (route_id, direction, origin_name, destination_name, base_duration_minutes, polyline_coords)
 SELECT id, 'outbound', 'Maharagama', 'Pettah', 75,
     '[[79.9282,6.8469],[79.9100,6.8600],[79.8900,6.8800],[79.8700,6.9000],[79.8503,6.9369]]'::jsonb
@@ -292,21 +254,12 @@ SELECT id, 'inbound', 'Pettah', 'Maharagama', 75,
 FROM routes WHERE route_number = '138'
 AND NOT EXISTS (SELECT 1 FROM route_variants rv JOIN routes r ON rv.route_id=r.id WHERE r.route_number='138' AND rv.direction='inbound');
 
--- 6. REALTIME CONFIGURATION  ← THIS IS CRITICAL
--- ============================================================
--- The live_bus_positions table MUST be in the publication for the passenger
--- app's Supabase Realtime stream to receive INSERT / UPDATE / DELETE events.
-
 BEGIN;
     DROP PUBLICATION IF EXISTS supabase_realtime;
     CREATE PUBLICATION supabase_realtime FOR TABLE live_bus_positions;
 COMMIT;
 
--- Full replica identity so UPDATE events carry the old row for diffing
 ALTER TABLE live_bus_positions REPLICA IDENTITY FULL;
-
--- 7. PROFILES & AUTH TRIGGER
--- ============================================================
 
 CREATE TABLE IF NOT EXISTS profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -338,9 +291,6 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
-
--- 8. HOLIDAYS & FAVOURITES
--- ============================================================
 
 CREATE TABLE IF NOT EXISTS holidays (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -381,15 +331,9 @@ CREATE POLICY "Public read holiday profiles" ON holiday_schedule_profiles FOR SE
 DROP POLICY IF EXISTS "Users manage favourites" ON favourites;
 CREATE POLICY "Users manage favourites" ON favourites FOR ALL USING (auth.uid() = user_id);
 
--- 9. CONVENIENCE VIEW (passenger app may query this for freshness pre-filter)
--- ============================================================
-
 CREATE OR REPLACE VIEW live_fresh_buses AS
 SELECT * FROM live_bus_positions
 WHERE last_updated_at >= NOW() - INTERVAL '15 minutes';
-
--- 10. PERFORMANCE INDEXES
--- ============================================================
 
 CREATE INDEX IF NOT EXISTS idx_live_bus_route       ON live_bus_positions(route_number);
 CREATE INDEX IF NOT EXISTS idx_live_bus_last_updated ON live_bus_positions(last_updated_at);

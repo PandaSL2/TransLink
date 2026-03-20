@@ -1,4 +1,4 @@
--- Migration 011: Live Data Cleanup
+
 CREATE OR REPLACE FUNCTION delete_stale_bus_positions()
 RETURNS VOID AS $$
 BEGIN
