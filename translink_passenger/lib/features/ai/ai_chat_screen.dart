@@ -2,15 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../../core/utils/app_localizations.dart';
-import '../../core/theme/app_theme.dart';
 import '../../models/bus_models.dart';
 import '../../services/ai_service.dart';
 import '../../services/supabase_service.dart';
 import '../../core/services/settings_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
@@ -24,11 +20,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final List<_ChatMessage> _messages = [];
   final List<Map<String, String>> _history = [];
   bool _loading = false;
-  bool _apiKeyMissing = false;
   List<RouteModel> _routes = [];
+
   List<StopModel> _stops = [];
-  late stt.SpeechToText _speechToText;
-  bool _isListening = false;
 
   static const _prefsKey = 'ai_chat_history';
   static const _maxAgeHours = 24;
@@ -44,7 +38,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   void initState() {
     super.initState();
-    _speechToText = stt.SpeechToText();
     _init();
   }
 
@@ -66,8 +59,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
       await _saveMessages();
     }
 
-    final key = await AiService.getApiKey();
-    if (key.isEmpty && mounted) setState(() => _apiKeyMissing = true);
 
     try {
       final r = await Future.wait([SupabaseService.getActiveRoutes(), SupabaseService.getAllStops()]);
@@ -125,13 +116,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
     await _saveMessages();
 
     _history.add({'role': 'user', 'content': msg});
+    if (!mounted) return;
     final settings = Provider.of<SettingsProvider>(context, listen: false);
-    
+
     final reply = await AiService.chat(
-      userMessage: msg, 
+      userMessage: msg,
       language: settings.languageName,
-      history: _history, 
-      routes: _routes, 
+      history: _history,
+      routes: _routes,
       stops: _stops,
     );
     _history.add({'role': 'assistant', 'content': reply});
@@ -146,20 +138,6 @@ class _AiChatScreenState extends State<AiChatScreen> {
     }
   }
 
-  void _listen() async {
-    if (!_isListening) {
-      final status = await Permission.microphone.request();
-      if (!status.isGranted) return;
-      bool available = await _speechToText.initialize();
-      if (available) {
-        setState(() => _isListening = true);
-        _speechToText.listen(onResult: (val) => setState(() => _msgCtrl.text = val.recognizedWords));
-      }
-    } else {
-      setState(() => _isListening = false);
-      _speechToText.stop();
-    }
-  }
 
   void _clearChat() async {
     final prefs = await SharedPreferences.getInstance();
@@ -221,7 +199,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
         ),
         if (_messages.length <= 1)
-          Container(
+          SizedBox(
             height: 50,
             child: ListView(
               scrollDirection: Axis.horizontal,
@@ -232,9 +210,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                   margin: const EdgeInsets.only(right: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
+                    border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
                   ),
                   child: Center(child: Text(q, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.primary))),
                 ),
@@ -259,7 +237,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(28),
               ),
               child: TextField(
@@ -299,7 +277,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
           boxShadow: [
              BoxShadow(
-               color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
+               color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),
                blurRadius: 10,
                offset: const Offset(0, 4)
              )
@@ -308,11 +286,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
         child: Text(
-          msg.text, 
+          msg.text,
           style: GoogleFonts.inter(
-            fontSize: 15, 
-            fontWeight: FontWeight.w600, 
-            color: isBot ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onPrimary, 
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: isBot ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onPrimary,
             height: 1.5
           )
         ),
@@ -326,7 +304,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5), borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(20)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [_dot(0), const SizedBox(width: 4), _dot(150), const SizedBox(width: 4), _dot(300)]),
       ),
     );
@@ -336,8 +314,8 @@ class _AiChatScreenState extends State<AiChatScreen> {
     tween: Tween(begin: 0, end: 1),
     duration: Duration(milliseconds: 600 + delay),
     builder: (_, v, _) => Container(
-      width: 8, height: 8, 
-      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.4 + (0.6 * v)), shape: BoxShape.circle)
+      width: 8, height: 8,
+      decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4 + (0.6 * v)), shape: BoxShape.circle)
     ),
   );
 }

@@ -28,7 +28,7 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     super.initState();
     _loadRecentSearches();
     _loadSavedPlaces();
-    
+
     if (widget.initialQuery != null) {
       _searchCtrl.text = widget.initialQuery!;
       _onSearchChanged(widget.initialQuery!);
@@ -99,7 +99,7 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
         destLat: loc['lat'],
         destLng: loc['lng'],
       );
-      
+
       final prefs = await SharedPreferences.getInstance();
       final List<dynamic> history = json.decode(prefs.getString('recent_searches') ?? '[]');
       history.removeWhere((r) => r['placeId'] == place.placeId);
@@ -113,6 +113,7 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
       if (history.length > 10) history.removeLast();
       await prefs.setString('recent_searches', json.encode(history));
 
+      if (!mounted) return;
       Navigator.pop(context, trip);
     }
   }
@@ -147,8 +148,8 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
         borderRadius: BorderRadius.circular(32),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.08), 
-            blurRadius: 15, 
+            color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.08),
+            blurRadius: 15,
             offset: const Offset(0, 8)
           ),
         ],
@@ -216,7 +217,7 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
             title: Text(r['mainText'] ?? '', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15, color: Theme.of(context).textTheme.bodyLarge?.color)),
             subtitle: Text(r['secondaryText'] ?? '', style: GoogleFonts.inter(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color), maxLines: 1),
             trailing: IconButton(
-              icon: Icon(isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded, 
+              icon: Icon(isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                 color: isSaved ? Colors.redAccent : Colors.grey[300], size: 20),
               onPressed: () => _toggleSaved(r),
             ),
@@ -236,7 +237,7 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: _suggestions.length,
-      separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
+      separatorBuilder: (context, index) => const Divider(height: 1, indent: 70),
       itemBuilder: (context, i) {
         final p = _suggestions[i];
         final isSaved = _savedPlacesList.any((place) => place['label'] == p.mainText);
@@ -244,13 +245,13 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
         return ListTile(
           leading: Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: const Icon(Icons.location_on_rounded, color: AppColors.secondary, size: 20),
           ),
           title: Text(p.mainText, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15, color: Theme.of(context).textTheme.bodyLarge?.color)),
           subtitle: Text(p.secondaryText, style: GoogleFonts.inter(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color), maxLines: 1, overflow: TextOverflow.ellipsis),
           trailing: IconButton(
-            icon: Icon(isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded, 
+            icon: Icon(isSaved ? Icons.favorite_rounded : Icons.favorite_border_rounded,
               color: isSaved ? Colors.redAccent : Colors.grey[300], size: 20),
             onPressed: () async {
               final loc = await _placesService.getPlaceLocation(p.placeId);

@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -30,7 +29,6 @@ class AccountScreenState extends State<AccountScreen> {
   String? _cachedQrData;
   final GlobalKey _historyKey = GlobalKey();
 
-  /// Called externally (e.g. from Pay Fare button on home tab)
   void openPaymentQR() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _showPaymentQR();
@@ -53,21 +51,20 @@ class AccountScreenState extends State<AccountScreen> {
     try {
       final uid = _client.auth.currentUser?.id;
       if (uid == null) return;
-      
+
       final data = await _client.from('profiles').select().eq('id', uid).single();
-      
+
       if (mounted) {
         setState(() {
         _profile = data;
-        
-        // 1. Try metadata first (from signup)
+
         final meta = _client.auth.currentUser?.userMetadata;
         final metaName = meta?['full_name'] as String? ?? '';
-        
+
         if (metaName.isNotEmpty && metaName != 'Passenger') {
           _nameCtrl.text = metaName;
         } else {
-          // 2. Try stored profile
+
           final stored = data['full_name'] as String? ?? '';
           final email = _client.auth.currentUser?.email ?? '';
           _nameCtrl.text = (stored.isEmpty || stored == 'Passenger')
@@ -88,13 +85,11 @@ class AccountScreenState extends State<AccountScreen> {
     try {
       final uid = _client.auth.currentUser?.id;
       if (uid == null) return;
-      
-      // Update the profiles table
+
       await _client.from('profiles').update({'full_name': name}).eq('id', uid);
-      
-      // Update the auth user metadata (for MapScreen header)
+
       await _client.auth.updateUser(UserAttributes(data: {'full_name': name}));
-      
+
       if (mounted) {
         setState(() { _editingName = false; _profile?['full_name'] = name; });
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,28 +139,12 @@ class AccountScreenState extends State<AccountScreen> {
   }
 
   Future<void> _showPaymentQR() async {
-    if (_cachedQrData == null) {
-      final prefs = await SharedPreferences.getInstance();
-      final activeJson = prefs.getString('active_route');
-      String pickup = "Unknown";
-      String drop = "Unknown";
-      double fare = 30.0;
-
-      if (activeJson != null) {
-        try {
-          final data = json.decode(activeJson);
-          pickup = data['pickup_stop'] ?? "Unknown";
-          drop = data['routeName'] ?? "Destination";
-          fare = 45.0;
-        } catch (_) {}
-      }
-
-      _cachedQrData = jsonEncode({
-        "userId": SupabaseService.client.auth.currentUser?.id,
-        "type": "payment_qr",
-        "session": "sess_${DateTime.now().millisecondsSinceEpoch}",
-      });
-    }
+    final l10n = AppLocalizations.of(context)!;
+    _cachedQrData ??= jsonEncode({
+      "userId": SupabaseService.client.auth.currentUser?.id,
+      "type": "payment_qr",
+      "session": "sess_${DateTime.now().millisecondsSinceEpoch}",
+    });
 
     if (!mounted) return;
 
@@ -175,7 +154,7 @@ class AccountScreenState extends State<AccountScreen> {
       barrierLabel: 'PaymentQR',
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
-        final l10n = AppLocalizations.of(context)!;
+
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Center(
@@ -191,7 +170,7 @@ class AccountScreenState extends State<AccountScreen> {
                     borderRadius: BorderRadius.circular(32),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.1),
+                        color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.1),
                         blurRadius: 30, offset: const Offset(0, 10)
                       )
                     ],
@@ -200,10 +179,10 @@ class AccountScreenState extends State<AccountScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(l10n.translate('scan_to_pay'), 
+                      Text(l10n.translate('scan_to_pay'),
                         style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary)),
                       const SizedBox(height: 8),
-                      Text(l10n.translate('show_to_conductor'), 
+                      Text(l10n.translate('show_to_conductor'),
                         style: GoogleFonts.inter(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.w600)),
                       const SizedBox(height: 32),
                       Container(
@@ -217,7 +196,8 @@ class AccountScreenState extends State<AccountScreen> {
                           data: _cachedQrData!,
                           version: QrVersions.auto,
                           size: 200.0,
-                          foregroundColor: Colors.black,
+                          eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                          dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
                         ),
                       ),
                       const SizedBox(height: 32),
@@ -230,7 +210,7 @@ class AccountScreenState extends State<AccountScreen> {
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                             backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                           ),
-                          child: Text(l10n.translate('close_btn'), 
+                          child: Text(l10n.translate('close_btn'),
                             style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary)),
                         ),
                       ),
@@ -270,7 +250,7 @@ class AccountScreenState extends State<AccountScreen> {
   Widget _passItem(AppLocalizations l10n, IconData icon, String title, String sub) {
     return InkWell(
       onTap: () {
-        Navigator.pop(context); // Close selection
+        Navigator.pop(context);
         _simulatePassPurchase(l10n, title);
       },
       child: Container(
@@ -316,7 +296,7 @@ class AccountScreenState extends State<AccountScreen> {
               ));
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(context).colorScheme.primary, 
+              backgroundColor: Theme.of(context).colorScheme.primary,
               foregroundColor: Theme.of(context).colorScheme.onPrimary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
             ),
@@ -330,7 +310,7 @@ class AccountScreenState extends State<AccountScreen> {
   void _showTopUpOptions(AppLocalizations l10n) async {
     final cards = await SupabaseService.getPaymentCards();
     if (!mounted) return;
-    
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Theme.of(context).cardColor,
@@ -352,7 +332,7 @@ class AccountScreenState extends State<AccountScreen> {
               contentPadding: const EdgeInsets.symmetric(horizontal: 4),
               leading: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
                 child: Icon(Icons.card_membership_rounded, color: Theme.of(context).colorScheme.secondary, size: 22),
               ),
               title: Text(
@@ -374,7 +354,7 @@ class AccountScreenState extends State<AccountScreen> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                 leading: Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
                   child: Icon(Icons.add_card_rounded, color: Theme.of(context).colorScheme.primary, size: 22),
                 ),
                 title: Text(
@@ -393,18 +373,17 @@ class AccountScreenState extends State<AccountScreen> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                 leading: Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(14)),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(14)),
                   child: Icon(c['card_brand'] == 'Visa' ? Icons.credit_card : Icons.credit_card_off, color: Theme.of(context).colorScheme.secondary, size: 22),
                 ),
                 title: Text('**** **** **** ${c['card_last_4']}', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
                 trailing: IconButton(
-                  icon: Icon(Icons.delete_outline_rounded, color: AppColors.error.withOpacity(0.7), size: 22),
+                  icon: Icon(Icons.delete_outline_rounded, color: AppColors.error.withValues(alpha: 0.7), size: 22),
                   onPressed: () async {
                     await SupabaseService.deletePaymentCard(c['id'].toString());
-                    if (mounted) {
-                      Navigator.pop(ctx);
-                      _showTopUpOptions(l10n);
-                    }
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    _showTopUpOptions(l10n);
                   },
                 ),
                 onTap: () {
@@ -419,7 +398,7 @@ class AccountScreenState extends State<AccountScreen> {
               contentPadding: const EdgeInsets.symmetric(horizontal: 4),
               leading: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.orange.withOpacity(0.12), borderRadius: BorderRadius.circular(14)),
+                decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
                 child: const Icon(Icons.qr_code_2_rounded, color: Colors.orange, size: 22),
               ),
               title: Text('LankaQR (Primary)', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16, color: Theme.of(context).colorScheme.onSurface)),
@@ -459,7 +438,7 @@ class AccountScreenState extends State<AccountScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            Text('Show this QR to any authorized TransLink agent or scan with your banking app to top up instantly.', 
+            Text('Show this QR to any authorized TransLink agent or scan with your banking app to top up instantly.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 13)),
             const SizedBox(height: 32),
@@ -468,14 +447,15 @@ class AccountScreenState extends State<AccountScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.orange.withOpacity(0.5), width: 2),
-                boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.1), blurRadius: 20)],
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.5), width: 2),
+                boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.1), blurRadius: 20)],
               ),
               child: QrImageView(
                 data: 'LANKAQR:TRANSLINK:WALLET:$uid',
                 version: QrVersions.auto,
                 size: 200.0,
-                foregroundColor: const Color(0xFF1E293B),
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Color(0xFF1E293B)),
+                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Color(0xFF1E293B)),
               ),
             ),
             const SizedBox(height: 32),
@@ -537,7 +517,7 @@ class AccountScreenState extends State<AccountScreen> {
   Future<void> _simulateTopUp(double amount) async {
     final uid = _client.auth.currentUser?.id;
     if (uid == null) return;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -547,13 +527,13 @@ class AccountScreenState extends State<AccountScreen> {
     try {
       await SupabaseService.topUpWallet(amount);
       if (mounted) {
-        Navigator.pop(context); // Close loader
-        // Success notification
+        Navigator.pop(context);
+
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text('Rs. ${amount.toStringAsFixed(0)} added to wallet!'),
           backgroundColor: AppColors.accent,
         ));
-        // REFETCH BALANCE IMMEDIATELY
+
         _loadProfile();
       }
     } catch (e) {
@@ -570,21 +550,16 @@ class AccountScreenState extends State<AccountScreen> {
     }
   }
 
-  void _scrollToRecentActivity() {
-    Scrollable.ensureVisible(_historyKey.currentContext!, duration: const Duration(milliseconds: 500), curve: Curves.easeInOut);
-  }
 
   String get _displayName {
-    // 1. Try metadata (where we save it in LoginScreen)
+
     final meta = _client.auth.currentUser?.userMetadata;
     final metaName = meta?['full_name'] as String? ?? '';
     if (metaName.isNotEmpty && metaName != 'Passenger') return metaName;
 
-    // 2. Try profile table
     final stored = _profile?['full_name'] as String? ?? '';
     if (stored.isNotEmpty && stored != 'Passenger') return stored;
 
-    // 3. Fallback to email
     final email = _client.auth.currentUser?.email ?? '';
     return email.split('@').first;
   }
@@ -625,22 +600,19 @@ class AccountScreenState extends State<AccountScreen> {
                     return ListView(
                       padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                       children: [
-                        // ── Profile Header ─────────────────────────────
+
                         const SizedBox(height: 16),
                         _buildProfileHeader(l10n),
                         const SizedBox(height: 24),
 
-                        // ── Wallet Section ─────────────────────────────
                         _sectionLabel(l10n.translate('wallet_title')),
                         _buildWalletBalanceCard(l10n, balance),
                         const SizedBox(height: 24),
 
-                        // ── Recent Activity ───────────────────────────
                         _sectionHeader(l10n.translate('recent_activity'), transactions, key: _historyKey),
                         _buildTransactionList(l10n, transactions, txSnapshot.connectionState == ConnectionState.waiting),
                         const SizedBox(height: 24),
 
-                        // ── Account Settings ──────────────────────────
                         _sectionLabel(l10n.translate('account_nav')),
                         _card([
                           _infoTile(Icons.email_outlined, l10n.translate('email_address'), email),
@@ -656,7 +628,6 @@ class AccountScreenState extends State<AccountScreen> {
                         ]),
                         const SizedBox(height: 24),
 
-                        // ── Map & App Settings ─────────────────────────
                         _sectionLabel(l10n.translate('settings')),
                         _card([
                           _switchTile(Icons.directions_bus_rounded, l10n.translate('show_virtual_buses'), l10n.translate('show_virtual_buses_sub'),
@@ -683,7 +654,6 @@ class AccountScreenState extends State<AccountScreen> {
                         ]),
                         const SizedBox(height: 32),
 
-                        // ── Sign Out ─────────────────────────────────
                         _signOutButton(l10n),
                       ],
                     );
@@ -704,8 +674,8 @@ class AccountScreenState extends State<AccountScreen> {
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: (Theme.of(context).brightness == Brightness.dark ? Colors.black : AppColors.primary).withOpacity(0.3), 
-                blurRadius: 12, 
+                color: (Theme.of(context).brightness == Brightness.dark ? Colors.black : AppColors.primary).withValues(alpha: 0.3),
+                blurRadius: 12,
                 offset: const Offset(0, 4)
               )
             ],
@@ -726,7 +696,7 @@ class AccountScreenState extends State<AccountScreen> {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.tertiary.withOpacity(0.12), borderRadius: BorderRadius.circular(6)),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.tertiary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
                     child: Text(_role.toUpperCase(), style: GoogleFonts.inter(color: Theme.of(context).colorScheme.tertiary, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.5)),
                   ),
                   const SizedBox(width: 8),
@@ -758,8 +728,8 @@ class AccountScreenState extends State<AccountScreen> {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).colorScheme.primary.withOpacity(isDark ? 0.4 : 0.25), 
-            blurRadius: 25, 
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: isDark ? 0.4 : 0.25),
+            blurRadius: 25,
             offset: const Offset(0, 12)
           )
         ],
@@ -771,11 +741,9 @@ class AccountScreenState extends State<AccountScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(l10n.translate('available_balance').toUpperCase(), 
-                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white.withOpacity(0.6), letterSpacing: 1.5)),
               Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), shape: BoxShape.circle),
                 child: GestureDetector(
                   onTap: () => _speakBalance(balance),
                   child: const Icon(Icons.volume_up_rounded, color: Colors.white, size: 20),
@@ -801,12 +769,12 @@ class AccountScreenState extends State<AccountScreen> {
                   icon: const Icon(Icons.add_rounded, size: 20),
                   label: Text(l10n.translate('top_up').toUpperCase()),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    side: BorderSide(color: Colors.white.withOpacity(0.3)),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
                     textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                   ),
                 ),
@@ -820,12 +788,12 @@ class AccountScreenState extends State<AccountScreen> {
                   icon: const Icon(Icons.mic_rounded, size: 18),
                   label: Text(l10n.translate('voice_assist').toUpperCase()),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.12),
+                    backgroundColor: Colors.white.withValues(alpha: 0.12),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    side: BorderSide(color: Colors.white.withOpacity(0.15)),
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.15)),
                     textStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, letterSpacing: 0.5),
                   ),
                 ),
@@ -836,7 +804,6 @@ class AccountScreenState extends State<AccountScreen> {
       ),
     );
   }
-
 
   Widget _buildTransactionList(AppLocalizations l10n, List<Map<String, dynamic>> txs, bool loading) {
     if (loading && txs.isEmpty) return Center(child: Padding(padding: const EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 3, color: Theme.of(context).colorScheme.primary)));
@@ -868,21 +835,21 @@ class AccountScreenState extends State<AccountScreen> {
               leading: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (isDebit ? AppColors.error : AppColors.accent).withOpacity(0.08), 
+                  color: (isDebit ? AppColors.error : AppColors.accent).withValues(alpha: 0.08),
                   shape: BoxShape.circle
                 ),
-                child: Icon(isDebit ? Icons.remove_rounded : Icons.add_rounded, 
+                child: Icon(isDebit ? Icons.remove_rounded : Icons.add_rounded,
                   color: isDebit ? AppColors.error : AppColors.accent, size: 18),
               ),
-              title: Text(tx['description'] ?? 'Transport Fare', 
+              title: Text(tx['description'] ?? 'Transport Fare',
                 style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: Theme.of(context).colorScheme.onSurface)),
-              subtitle: Text('${date.day}/${date.month} • ${date.hour}:${date.minute.toString().padLeft(2, '0')}', 
+              subtitle: Text('${date.day}/${date.month} • ${date.hour}:${date.minute.toString().padLeft(2, '0')}',
                 style: GoogleFonts.inter(fontSize: 12, color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500)),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('${isDebit ? "-" : "+"} Rs.${amount.toStringAsFixed(0)}', 
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 16, 
+                  Text('${isDebit ? "-" : "+"} Rs.${amount.toStringAsFixed(0)}',
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.w900, fontSize: 16,
                       color: isDebit ? Theme.of(context).colorScheme.onSurface : AppColors.accent)),
                   const SizedBox(width: 8),
                   Icon(Icons.chevron_right_rounded, size: 18, color: Theme.of(context).dividerColor),
@@ -931,14 +898,13 @@ class AccountScreenState extends State<AccountScreen> {
                 ),
                 Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: (isDebit ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary).withOpacity(0.1), shape: BoxShape.circle),
+                  decoration: BoxDecoration(color: (isDebit ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary).withValues(alpha: 0.1), shape: BoxShape.circle),
                   child: Icon(isDebit ? Icons.receipt_long_rounded : Icons.account_balance_wallet_rounded, color: isDebit ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary, size: 24),
                 ),
               ],
             ),
             const Divider(height: 48),
-            
-            // Route Visualizer (Simple)
+
             if (isDebit) ...[
               Row(
                 children: [
@@ -965,7 +931,6 @@ class AccountScreenState extends State<AccountScreen> {
               const SizedBox(height: 32),
             ],
 
-            // Info Grid
             Row(
               children: [
                 _detailBlock('BUS NO.', busNum, Icons.directions_bus_rounded),
@@ -1063,7 +1028,6 @@ class AccountScreenState extends State<AccountScreen> {
             const SizedBox(height: 24),
             Builder(
               builder: (ctx) {
-                final l10n = AppLocalizations.of(ctx)!;
                 return Expanded(
                   child: ListView.separated(
                     itemCount: txs.length,
@@ -1077,7 +1041,7 @@ class AccountScreenState extends State<AccountScreen> {
                       return ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(color: (isDebit ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary).withOpacity(0.1), shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: (isDebit ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary).withValues(alpha: 0.1), shape: BoxShape.circle),
                           child: Icon(isDebit ? Icons.remove_rounded : Icons.add_rounded, color: isDebit ? Theme.of(context).colorScheme.error : Theme.of(context).colorScheme.primary, size: 20),
                         ),
                         title: Text(tx['description'] ?? 'Transport Fare', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13, color: Theme.of(context).colorScheme.onSurface)),
@@ -1124,12 +1088,12 @@ class AccountScreenState extends State<AccountScreen> {
       height: 58,
       child: OutlinedButton.icon(
         onPressed: _signOut,
-        icon: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error.withOpacity(0.8), size: 20),
-        label: Text(l10n.translate('sign_out'), 
-          style: GoogleFonts.inter(color: Theme.of(context).colorScheme.error.withOpacity(0.8), fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5)),
+        icon: Icon(Icons.logout_rounded, color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8), size: 20),
+        label: Text(l10n.translate('sign_out'),
+          style: GoogleFonts.inter(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.8), fontWeight: FontWeight.w800, fontSize: 15, letterSpacing: 0.5)),
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: Theme.of(context).colorScheme.error.withOpacity(0.2), width: 1.5),
-          backgroundColor: Theme.of(context).colorScheme.error.withOpacity(0.04), 
+          side: BorderSide(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2), width: 1.5),
+          backgroundColor: Theme.of(context).colorScheme.error.withValues(alpha: 0.04),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         ),
       ),

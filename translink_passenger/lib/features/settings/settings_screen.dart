@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/services/settings_provider.dart';
 import '../../core/utils/app_localizations.dart';
 
@@ -74,9 +73,13 @@ class SettingsScreen extends StatelessWidget {
               value: settings.themeMode == ThemeMode.light ? 'Light' : settings.themeMode == ThemeMode.dark ? 'Dark' : 'System Default',
               options: const ['System Default', 'Light', 'Dark'],
               onChanged: (v) {
-                if (v == 'Light') settings.setThemeMode(ThemeMode.light);
-                else if (v == 'Dark') settings.setThemeMode(ThemeMode.dark);
-                else settings.setThemeMode(ThemeMode.system);
+                if (v == 'Light') {
+                  settings.setThemeMode(ThemeMode.light);
+                } else if (v == 'Dark') {
+                  settings.setThemeMode(ThemeMode.dark);
+                } else {
+                  settings.setThemeMode(ThemeMode.system);
+                }
               },
               theme: theme,
             ),
@@ -120,7 +123,7 @@ class SettingsScreen extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
               child: Icon(Icons.directions_bus_rounded, color: theme.colorScheme.primary),
             ),
             const SizedBox(width: 12),
@@ -156,10 +159,10 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _settingsCard(List<Widget> children, ThemeData theme) => Container(
     decoration: BoxDecoration(
-      color: theme.cardColor, 
-      borderRadius: BorderRadius.circular(20), 
+      color: theme.cardColor,
+      borderRadius: BorderRadius.circular(20),
       border: Border.all(color: theme.dividerColor),
-      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
     ),
     child: Column(children: children),
   );
@@ -172,7 +175,7 @@ class SettingsScreen extends StatelessWidget {
       child: Row(children: [
         Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: theme.colorScheme.primary, size: 20),
         ),
         const SizedBox(width: 16),
@@ -191,7 +194,7 @@ class SettingsScreen extends StatelessWidget {
       child: Row(children: [
         Container(
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
           child: Icon(icon, color: theme.colorScheme.primary, size: 20),
         ),
         const SizedBox(width: 16),
@@ -213,7 +216,7 @@ class SettingsScreen extends StatelessWidget {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(color: theme.colorScheme.primary.withOpacity(0.08), borderRadius: BorderRadius.circular(12)),
+        decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
         child: Icon(icon, color: theme.colorScheme.primary, size: 20),
       ),
       title: Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),

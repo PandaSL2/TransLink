@@ -19,13 +19,11 @@ class FavouritesScreen extends StatefulWidget {
 
 class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
-  // Saved Routes & Places Data
+
   List<AiDiscoveredRoute> _localFavs = [];
   List<Map<String, dynamic>> _localPlaces = [];
   bool _loadingFavs = true;
 
-  // Timetable Data
   List<NearestBusStop> _nearbyStops = [];
   bool _loadingStops = true;
   final _directionsService = DirectionsService();
@@ -40,29 +38,27 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
   }
 
   @override
-  void dispose() { 
-    _tabController.dispose(); 
-    super.dispose(); 
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadData() async {
     setState(() => _loadingFavs = true);
     final prefs = await SharedPreferences.getInstance();
-    
-    // Load Routes
+
     final dataStr = prefs.getString('fav_routes_data') ?? '{}';
     final Map<String, dynamic> data = json.decode(dataStr);
     final routes = data.values.map((v) => AiDiscoveredRoute.fromJson(v as Map<String, dynamic>)).toList();
-    
-    // Load Places
+
     final placesStr = prefs.getString('saved_places_list') ?? '[]';
     final List<dynamic> places = json.decode(placesStr);
-    
+
     if (mounted) {
-      setState(() { 
-        _localFavs = routes; 
+      setState(() {
+        _localFavs = routes;
         _localPlaces = List<Map<String, dynamic>>.from(places);
-        _loadingFavs = false; 
+        _loadingFavs = false;
       });
     }
   }
@@ -84,18 +80,17 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('active_route', json.encode(r.toJson()));
     await prefs.setBool('is_ride_active', true);
-    
-    // Switch to Map tab in MainShell
+
     if (mounted) {
       final shell = context.findAncestorStateOfType<MainShellState>();
       if (shell != null) {
-        shell.setTab(1); // 1 is Explore/Map
+        shell.setTab(1);
       }
     }
   }
 
   void _openGoogleMapsTimetable(NearestBusStop stop) async {
-    // This intent URL opens the place directly in Google Maps which brings up transit boards
+
     final url = Uri.parse(
       'https://www.google.com/maps/search/?api=1&query=${stop.lat},${stop.lng}&query_place_id=${stop.placeId ?? ""}'
     );
@@ -123,7 +118,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.07),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TabBar(
@@ -186,14 +181,14 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Theme.of(context).dividerColor),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
           Container(
             width: 44, height: 44,
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1),
+              color: Colors.blue.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Icon(Icons.departure_board_rounded, color: Colors.blue, size: 22),
@@ -231,7 +226,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
           TextButton(
             onPressed: () => _openGoogleMapsTimetable(stop),
             style: TextButton.styleFrom(
-              backgroundColor: AppColors.secondary.withOpacity(0.1),
+              backgroundColor: AppColors.secondary.withValues(alpha: 0.1),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text(
@@ -251,7 +246,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
         children: [
           Container(
             width: 72, height: 72,
-            decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
             child: const Icon(Icons.location_off_rounded, color: Colors.blue, size: 36),
           ),
           const SizedBox(height: 16),
@@ -279,7 +274,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
               Padding(
                 padding: const EdgeInsets.only(bottom: 12, left: 4),
                 child: Text(
-                  AppLocalizations.of(context)!.translate('saved_places') ?? 'Saved Places',
+                  AppLocalizations.of(context)!.translate('saved_places'),
                   style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Theme.of(context).colorScheme.onSurface),
                 ),
               ),
@@ -317,7 +312,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
         border: Border.all(color: Theme.of(context).dividerColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05), 
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 15, offset: const Offset(0, 8)
           )
         ],
@@ -346,10 +341,10 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.12),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Icon(Icons.place_rounded, 
+                    child: Icon(Icons.place_rounded,
                       color: Theme.of(context).colorScheme.primary, size: 24),
                   ),
                   const SizedBox(width: 16),
@@ -357,14 +352,14 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(label, 
+                        Text(label,
                           style: GoogleFonts.outfit(
-                            fontWeight: FontWeight.w800, 
-                            fontSize: 17, 
+                            fontWeight: FontWeight.w800,
+                            fontSize: 17,
                             color: Theme.of(context).textTheme.bodyLarge?.color,
                           )),
                         const SizedBox(height: 2),
-                        Text('Saved Destination', 
+                        Text('Saved Destination',
                           style: GoogleFonts.inter(fontSize: 13, color: Theme.of(context).textTheme.bodySmall?.color)),
                       ],
                     ),
@@ -399,14 +394,14 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Theme.of(context).dividerColor),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.2 : 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: Row(
           children: [
             Container(
               width: 44, height: 44,
               decoration: BoxDecoration(
-                color: AppColors.secondary.withOpacity(0.1),
+                color: AppColors.secondary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(Icons.directions_bus_rounded, color: AppColors.secondary, size: 22),
@@ -453,10 +448,10 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
                 final ids = prefs.getStringList('fav_routes') ?? [];
                 final dataStr = prefs.getString('fav_routes_data') ?? '{}';
                 final data = Map<String, dynamic>.from(json.decode(dataStr));
-                
+
                 ids.remove(fav.id);
                 data.remove(fav.id);
-                
+
                 await prefs.setStringList('fav_routes', ids);
                 await prefs.setString('fav_routes_data', json.encode(data));
                 _loadData();
@@ -471,7 +466,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
   Widget _addNewCard() {
     return GestureDetector(
       onTap: () {
-        // Switch to Map tab
+
         final shell = context.findAncestorStateOfType<MainShellState>();
         if (shell != null) {
           shell.setTab(1);
@@ -480,16 +475,16 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.secondary.withOpacity(0.06),
+          color: AppColors.secondary.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.secondary.withOpacity(0.2), width: 1.5),
+          border: Border.all(color: AppColors.secondary.withValues(alpha: 0.2), width: 1.5),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
               width: 32, height: 32,
-              decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
               child: const Center(child: Icon(Icons.search_rounded, color: AppColors.secondary, size: 20)),
             ),
             const SizedBox(width: 10),
@@ -507,7 +502,7 @@ class _FavouritesScreenState extends State<FavouritesScreen> with SingleTickerPr
         children: [
           Container(
             width: 72, height: 72,
-            decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
             child: const Icon(Icons.favorite_border_rounded, color: AppColors.secondary, size: 36),
           ),
           Text(AppLocalizations.of(context)!.translate('no_saved_routes'), style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: Theme.of(context).colorScheme.onSurface)),

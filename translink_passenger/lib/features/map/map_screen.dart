@@ -7,7 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
 import 'package:geolocator/geolocator.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -38,16 +37,13 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   final _locationService = LocationService();
   final _flutterTts = FlutterTts();
 
-  // --- View State ---
   bool _isLoading = false;
 
-  // --- Map Data ---
   static const GeoPosition _colombo = GeoPosition(79.8612, 6.9271);
   GeoPosition? _userPosition;
   final Set<gmaps.Marker> _markers = {};
   final Set<gmaps.Polyline> _polylines = {};
 
-  // --- Route Data ---
   List<AiDiscoveredRoute> _routes = [];
   List<LiveBusData> _liveBuses = [];
   String _destLabel = "";
@@ -55,21 +51,17 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
 
   GeoPosition? _alightStopPos;
   bool _alightAlertTriggered = false;
-  bool _anyBusMatch = false;
   StreamSubscription? _busStream;
+
   StreamSubscription? _txSubscription;
   DateTime? _qrOpenTime;
   List<StopModel> _allStops = [];
   late final BusAnimationController _busAnimationController;
-  
-  // --- Animation Cache ---
-  final Map<String, List<gmaps.LatLng>> _busTrails = {};
-  final Map<String, DateTime> _lastUpdateTimes = {};
 
-  // --- UI Controllers ---
+  final Map<String, List<gmaps.LatLng>> _busTrails = {};
+
   final _sheetCtrl = DraggableScrollableController();
 
-  // --- Saved Locations ---
   Map<String, dynamic> _homeLocation = {'label': 'Home', 'lat': 0.0, 'lng': 0.0};
   Map<String, dynamic> _workLocation = {'label': 'Work', 'lat': 0.0, 'lng': 0.0};
   List<Map<String, dynamic>> _savedPlacesList = [];
@@ -84,8 +76,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     _loadAllStops();
     _loadSavedLocations();
     _requestPermissions();
-    
-    // Proximity Alert Listener
+
     Geolocator.getPositionStream(
       locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10)
     ).listen((pos) {
@@ -94,14 +85,13 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         _checkAlightAlert();
       }
     });
-    
-    // Support swipe-down/drag to go back
+
     _sheetCtrl.addListener(() {
       final rideProvider = Provider.of<RideProvider>(context, listen: false);
       if (_sheetCtrl.isAttached && _sheetCtrl.size <= 0.12 && rideProvider.activeRoute != null) {
         if (mounted) {
           if (rideProvider.isRideActive) {
-             // If ride is active, don't clear the search/route, just keep it minimized
+
              return;
           }
           setState(() {
@@ -136,18 +126,16 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     final String message = '🚍 Tracking my journey on Bus ${r.routeNumber} to ${r.routeName.split('→').last.trim()}.\n\n'
                            'Live Location: $mapsLink\n\n'
                            'Sent via Translink Passenger App';
-    
+
     Share.share(message, subject: 'My Translink Journey');
   }
 
-  // --- External Methods called by MainShell ---
   void handleNewTripFromHome(TripModel trip) {
     if (trip.destinationName != null && trip.destLat != null) {
       _searchDestination(trip.destinationName!, gmaps.LatLng(trip.destLat!, trip.destLng!), trip: trip);
     }
   }
 
-  // --- Logic Methods ---
   Future<void> _detectLocation() async {
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     if (!settings.locationAutoDetect && _userPosition != null) return;
@@ -157,10 +145,10 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       setState(() {
         _userPosition = pos;
       });
-      
+
       final currentZoom = await _mapController?.getZoomLevel() ?? 0;
       final targetZoom = currentZoom < 15 ? 16.0 : currentZoom;
-      
+
       _mapController?.animateCamera(gmaps.CameraUpdate.newCameraPosition(
         gmaps.CameraPosition(target: gmaps.LatLng(pos.lat, pos.lng), zoom: targetZoom)
       ));
@@ -182,7 +170,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     _busStream?.cancel();
     _busStream = SupabaseService.getLiveBusesStream().listen((buses) async {
       if (mounted) {
-        debugPrint('🚏 MapScreen: Received \${buses.length} live buses from Supabase.');
+        debugPrint('🚏 MapScreen: Received ${buses.length} live buses from Supabase.');
         setState(() => _liveBuses = buses);
         await _busAnimationController.updateBuses(buses);
         _checkAlightAlert();
@@ -192,12 +180,11 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
 
   void _syncBusMarkers(List<LiveBusData> buses) {
     if (!mounted) return;
-    
+
     final rideProvider = Provider.of<RideProvider>(context, listen: false);
     final settings = Provider.of<SettingsProvider>(context, listen: false);
     final selectedRoute = rideProvider.activeRoute;
 
-    // 1. Quick Exit if Disabled
     if (!settings.showVirtualBuses) {
       if (_markers.any((m) => m.markerId.value.startsWith('bus_'))) {
         setState(() {
@@ -208,17 +195,13 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       return;
     }
 
-    // 2. Pre-filter buses to prevent heavy logic in animation frames
-    bool matchedAtLeastOne = false;
     final Set<gmaps.Marker> newMarkers = Set.from(_markers.where((m) => !m.markerId.value.startsWith('bus_')));
     final Set<gmaps.Polyline> newPolylines = Set.from(_polylines.where((p) => !p.polylineId.value.startsWith('trail_')));
-    
-    // --- DYNAMIC FILTERING LOGIC ---
+
     final bool isSearchActive = _routes.isNotEmpty;
     final bool isSelectionActive = selectedRoute != null;
     final bool shouldFilter = isSearchActive || isSelectionActive;
 
-    // Collect all "relevant" route numbers to display
     final Set<String> relevantRouteNumbers = {};
     if (isSelectionActive) {
       for (var segment in selectedRoute.segments) {
@@ -236,42 +219,36 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       }
     }
 
-    // Find nearest stop for ETA once (outside the bus loop)
-    StopModel? nearestUserStop;
     if (_userPosition != null && _allStops.isNotEmpty) {
-      double minDist = 5000; // Only care about stops within 5km for ETA
+      double minDist = 5000;
       for (var stop in _allStops) {
         final d = _locationService.calculateDistance(_userPosition!.lat, _userPosition!.lng, stop.lat, stop.lng);
         if (d < minDist) {
           minDist = d;
-          nearestUserStop = stop;
         }
       }
     }
 
     for (final bus in buses) {
-      // 1. Initial State: Show all unless filtering is active
-      bool isMatch = !shouldFilter; 
-      
+
+      bool isMatch = !shouldFilter;
+
       if (shouldFilter) {
         final busNumUpper = bus.routeNumber.toUpperCase().trim();
         final busDigits = busNumUpper.replaceAll(RegExp(r'[^0-9]'), '');
 
-        // Primary Match: Check against relevantRouteNumbers set
         for (var relNumber in relevantRouteNumbers) {
           final relDigits = relNumber.replaceAll(RegExp(r'[^0-9]'), '');
-          
-          // EXPERT MATCH: Exact, Substring, or Numerical Match (e.g., "689A" matches "689")
-          if (relNumber == busNumUpper || 
-              relNumber.contains(busNumUpper) || 
-              busNumUpper.contains(relNumber) || 
+
+          if (relNumber == busNumUpper ||
+              relNumber.contains(busNumUpper) ||
+              busNumUpper.contains(relNumber) ||
              (relDigits == busDigits && relDigits.isNotEmpty)) {
             isMatch = true;
             break;
           }
         }
 
-        // 2. FAIL-SAFE / SEMANTIC MATCH (Only for Selection mode or if no match found)
         if (!isMatch && isSelectionActive && relevantRouteNumbers.isEmpty && bus.routeName.isNotEmpty && selectedRoute.routeName.isNotEmpty) {
           final busParts = bus.routeName.toLowerCase().split(RegExp(r'[\s\-\>]+'));
           final routeParts = selectedRoute.routeName.toLowerCase().split(RegExp(r'[\s\-\>]+'));
@@ -282,9 +259,8 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
             }
           }
         }
-        
+
         if (!isMatch) continue;
-        matchedAtLeastOne = true;
       }
 
       final id = bus.busNumber;
@@ -294,7 +270,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       final finalPos = animPos.latitude != 0 ? animPos : gmaps.LatLng(bus.lat, bus.lng);
 
       if (finalPos.latitude != 0) {
-        // Trail Logic (Throttled update)
+
         if (!_busTrails.containsKey(id)) _busTrails[id] = [];
         if (_busTrails[id]!.isEmpty || (_busTrails[id]!.last.latitude != finalPos.latitude)) {
           _busTrails[id]!.add(finalPos);
@@ -305,38 +281,35 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           newPolylines.add(gmaps.Polyline(
             polylineId: gmaps.PolylineId('trail_$id'),
             points: _busTrails[id]!,
-            color: AppColors.secondary.withOpacity(0.35),
+            color: AppColors.secondary.withValues(alpha: 0.35),
             width: 3,
-            zIndex: 1,
           ));
         }
 
         newMarkers.add(gmaps.Marker(
           markerId: gmaps.MarkerId('bus_$id'),
-          position: finalPos, 
+          position: finalPos,
           rotation: animRot,
           icon: icon,
           anchor: const Offset(0.5, 0.5),
           flat: true,
-          zIndex: 5,
           infoWindow: gmaps.InfoWindow(
             title: '${bus.routeNumber} - ${bus.busNumber}',
           ),
         ));
       }
     }
-    
+
     if (mounted) {
       setState(() {
         _markers.clear();
         _markers.addAll(newMarkers);
         _polylines.clear();
         _polylines.addAll(newPolylines);
-        _anyBusMatch = matchedAtLeastOne;
       });
     }
-  }
 
+  }
 
     Future<void> _loadAllStops() async {
       try {
@@ -349,19 +322,18 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     if (_userPosition == null || _alightStopPos == null || _alightAlertTriggered) {
       return;
     }
-    
+
     final rideProvider = Provider.of<RideProvider>(context, listen: false);
     if (!rideProvider.isRemindMeActive) return;
 
     final dist = _locationService.calculateDistance(
       _userPosition!.lat, _userPosition!.lng,
       _alightStopPos!.lat, _alightStopPos!.lng);
-    
+
     if (dist < 500) {
       _alightAlertTriggered = true;
-      rideProvider.setRemindMe(false); // One-time trigger
-      
-      // Native Vibration Pattern (Triple pulse)
+      rideProvider.setRemindMe(false);
+
       HapticFeedback.vibrate();
       Future.delayed(const Duration(milliseconds: 300), () => HapticFeedback.vibrate());
       Future.delayed(const Duration(milliseconds: 600), () => HapticFeedback.vibrate());
@@ -372,16 +344,16 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         body: AppLocalizations.of(context)!.translate('approaching_stop_msg'),
       );
     }
-    // Shared persistence logic
+
     if (dist < 100 && !rideProvider.isSharingActive && !rideProvider.isRideActive) {
       _clearSearch();
     }
   }
 
   Future<void> _searchDestination(String label, gmaps.LatLng latLng, {TripModel? trip}) async {
-    // Strictly enforce one ride only: Clear any existing state before a new search
+
     _clearSearch();
-    
+
     final originLat = trip?.originLat ?? _userPosition?.lat ?? _colombo.lat;
     final originLng = trip?.originLng ?? _userPosition?.lng ?? _colombo.lng;
 
@@ -401,27 +373,26 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         ));
       }
     });
-    
+
     final transitResults = await _directionsService.getTransitRoute(
-      originLat, 
+      originLat,
       originLng,
-      latLng.latitude, 
+      latLng.latitude,
       latLng.longitude
     );
-    
+
     final List<AiDiscoveredRoute> enrichedRoutes = [];
     for (final t in transitResults) {
       final route = await _directionsService.buildBusRoute(transit: t, destLabel: label);
       enrichedRoutes.add(route);
     }
-    
+
     if (mounted) {
       setState(() {
         _routes = enrichedRoutes;
         _isLoading = false;
       });
-      
-      // Auto-adjust camera to encompass both the (custom) origin and destination
+
       _mapController?.animateCamera(
         gmaps.CameraUpdate.newLatLngBounds(
           gmaps.LatLngBounds(
@@ -434,10 +405,10 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
               originLng > latLng.longitude ? originLng : latLng.longitude,
             ),
           ),
-          80.0, // padding
+          80.0,
         ),
       );
-      
+
       _sheetCtrl.animateTo(0.5, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
@@ -445,14 +416,14 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   void _selectRoute(AiDiscoveredRoute r) {
     final rideProvider = Provider.of<RideProvider>(context, listen: false);
     rideProvider.updateActiveRoute(r);
-    
+
     setState(() {
       _suggestedRoutesBackup = List.from(_routes);
       _routes = [];
       _alightStopPos = r.destPosition;
-      
+
       _syncBusMarkers(_liveBuses);
-      
+
       int segmentIndex = 0;
       for (final segment in r.segments) {
         _polylines.add(gmaps.Polyline(
@@ -460,15 +431,14 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           points: segment.polyline.map((p) => gmaps.LatLng(p.lat, p.lng)).toList(),
           color: segment.color,
           width: 5,
-          patterns: segment.type == SegmentType.walking 
-              ? [gmaps.PatternItem.dot, gmaps.PatternItem.gap(10)] 
+          patterns: segment.type == SegmentType.walking
+              ? [gmaps.PatternItem.dot, gmaps.PatternItem.gap(10)]
               : const [],
         ));
         segmentIndex++;
       }
     });
-    
-    // Animate camera to fit the full route
+
     if (r.polyline.isNotEmpty) {
       double minLat = r.polyline[0].lat;
       double minLng = r.polyline[0].lng;
@@ -488,11 +458,11 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
             southwest: gmaps.LatLng(minLat, minLng),
             northeast: gmaps.LatLng(maxLat, maxLng),
           ),
-          80.0, // padding
+          80.0,
         ),
       );
     }
-    
+
     _sheetCtrl.animateTo(0.45, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
@@ -508,20 +478,19 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     final rideProvider = Provider.of<RideProvider>(context, listen: false);
     rideProvider.updateActiveRoute(null);
     rideProvider.stopRide();
-    
+
     setState(() {
       _destLabel = "";
       _routes = [];
       _markers.clear();
       _polylines.clear();
-      _anyBusMatch = false;
     });
-    
+
+
     _syncBusMarkers(_liveBuses);
     _sheetCtrl.animateTo(0.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
   }
 
-  // --- Saved Locations Logic ---
   Future<void> _loadSavedLocations() async {
     final prefs = await SharedPreferences.getInstance();
     final rawHome = prefs.getString('saved_home');
@@ -546,24 +515,20 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     await prefs.setString('saved_places_list', json.encode(_savedPlacesList));
   }
 
-  bool get _isSearchActive => _routes.isNotEmpty || _destLabel.isNotEmpty || Provider.of<RideProvider>(context, listen: false).activeRoute != null;
 
-  // --- UI Build Methods ---
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    
+
     final rideProvider = Provider.of<RideProvider>(context);
     final settings = Provider.of<SettingsProvider>(context);
     final selectedRoute = rideProvider.activeRoute;
-    final isSearchActive = _isSearchActive;
-    
+
     return PopScope(
-      canPop: true, // Allow back navigation, the ride stays active in the provider
+      canPop: true,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        
-        // If sheet is expanded but ride NOT active, minimize sheet on back press
+
         if (selectedRoute != null && !rideProvider.isRideActive) {
           _sheetCtrl.animateTo(0.1, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
           setState(() {
@@ -663,12 +628,12 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         padding: const EdgeInsets.symmetric(horizontal: 16),
         height: 56,
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor, 
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: Theme.of(context).brightness == Brightness.dark ? Colors.black.withOpacity(0.5) : Colors.black.withOpacity(0.08), 
-              blurRadius: 15, 
+              color: Theme.of(context).brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.5) : Colors.black.withValues(alpha: 0.08),
+              blurRadius: 15,
               offset: const Offset(0, 8)
             )
           ],
@@ -726,9 +691,9 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor, 
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
           border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
@@ -748,9 +713,9 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor, 
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)],
           border: Border.all(color: Theme.of(context).dividerColor),
         ),
         child: Row(
@@ -774,8 +739,8 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     }
 
     final currentBalance = await SupabaseService.getWalletBalance();
+    if (!mounted) return;
     if (currentBalance < r.estimatedFareLkr) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(l10n.translate('insufficient_balance_msg'), style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: Colors.red,
@@ -789,25 +754,23 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     _txSubscription?.cancel();
     _txSubscription = SupabaseService.getTransactionsStream().listen((transactions) {
       if (!mounted || _qrOpenTime == null) return;
-      
-      // Check for ANY transaction created AFTER we opened the QR modal
+
       final newTx = transactions.where((tx) {
         final createdAt = DateTime.tryParse(tx['created_at'] ?? '');
         return createdAt != null && createdAt.isAfter(_qrOpenTime!);
       }).toList();
 
       if (newTx.isNotEmpty) {
-        // A new transaction was added!
+
         _txSubscription?.cancel();
         _qrOpenTime = null;
-        if (Navigator.canPop(context)) Navigator.pop(context); // Close QR sheet
+        if (Navigator.canPop(context)) Navigator.pop(context);
         _showPaymentSuccessDialog(r);
       }
     });
 
     final destinationName = r.routeName.split(RegExp(r'[→➔]')).last.trim().replaceFirst(RegExp(r'^(Transit to |To )', caseSensitive: false), '');
 
-    // JSON format: {"uid": "...", "fare": ..., "dest": "..."}
     final qrData = json.encode({
       'uid': user.id,
       'fare': r.estimatedFareLkr,
@@ -840,22 +803,23 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(28),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 10))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 10))],
               ),
               child: QrImageView(
                 data: qrData,
                 version: QrVersions.auto,
                 size: 220.0,
-                foregroundColor: Colors.black,
+                eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+                dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
               ),
             ),
             const SizedBox(height: 36),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.2)),
+                border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -912,7 +876,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              l10n.translate('payment_success_msg', args: {'route': r.routeNumber ?? ''}),
+              l10n.translate('payment_success_msg', args: {'route': r.routeNumber}),
               style: GoogleFonts.inter(fontSize: 15),
             ),
             const SizedBox(height: 24),
@@ -971,7 +935,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           children: [
             Text(AppLocalizations.trOf(context, 'saved_nav'), style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
-            if (_savedPlacesList.isEmpty) 
+            if (_savedPlacesList.isEmpty)
                Padding(padding: const EdgeInsets.symmetric(vertical: 32), child: Text(AppLocalizations.trOf(context, 'no_saved_routes_msg')))
             else
               ..._savedPlacesList.map((p) => ListTile(
@@ -1021,12 +985,12 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       maxChildSize: 0.9,
       builder: (context, sc) => Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor, 
+          color: Theme.of(context).cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.6 : 0.1), 
-              blurRadius: 25, 
+              color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.6 : 0.1),
+              blurRadius: 25,
               offset: const Offset(0, -5)
             )
           ],
@@ -1034,9 +998,9 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         ),
         child: Column(
           children: [
-            // Fixed Handle + Dynamic Hint Header
+
             GestureDetector(
-              onVerticalDragUpdate: (_) {}, // Let sheet handle it
+              onVerticalDragUpdate: (_) {},
               onTap: () => _sheetCtrl.animateTo(0.45, duration: const Duration(milliseconds: 300), curve: Curves.easeOut),
               child: Container(
                 width: double.infinity,
@@ -1049,21 +1013,21 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 44, 
-                      height: 5, 
+                      width: 44,
+                      height: 5,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).dividerColor, 
+                        color: Theme.of(context).dividerColor,
                         borderRadius: BorderRadius.circular(10)
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      rideProvider.isRideActive 
+                      rideProvider.isRideActive
                           ? l10n.translate('swipe_tracking')
                           : (selectedRoute != null ? l10n.translate('swipe_route_details') : l10n.translate('swipe_nearby')),
                       style: GoogleFonts.inter(
-                        fontSize: 12, 
-                        fontWeight: FontWeight.w800, 
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
                         color: Theme.of(context).colorScheme.primary,
                         letterSpacing: 0.2,
                       ),
@@ -1072,20 +1036,20 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                 ),
               ),
             ),
-            // Scrollable Content
+
             Expanded(
               child: ListView(
                 controller: sc,
                 padding: EdgeInsets.zero,
                 physics: const BouncingScrollPhysics(),
                 children: [
-                  if (_isLoading) 
+                  if (_isLoading)
                     Center(child: Padding(padding: const EdgeInsets.all(48), child: CircularProgressIndicator(color: Theme.of(context).colorScheme.primary, strokeWidth: 3)))
-                  else if (selectedRoute != null) 
+                  else if (selectedRoute != null)
                     ..._buildRouteDetails(l10n, selectedRoute)
-                  else if (_routes.isNotEmpty) 
+                  else if (_routes.isNotEmpty)
                     ..._buildDiscovery(l10n)
-                  else 
+                  else
                     _buildEmptySheet(l10n),
                 ],
               ),
@@ -1134,7 +1098,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
             borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.04),
+                color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.04),
                 blurRadius: 15,
                 offset: const Offset(0, 6),
               )
@@ -1144,15 +1108,15 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(14), 
+                padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1), 
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16)
-                ), 
+                ),
                 child: Icon(
-                  r.segments.any((s) => s.type == SegmentType.bus) 
-                    ? Icons.directions_bus_rounded 
-                    : Icons.directions_walk_rounded, 
+                  r.segments.any((s) => s.type == SegmentType.bus)
+                    ? Icons.directions_bus_rounded
+                    : Icons.directions_walk_rounded,
                   color: Theme.of(context).colorScheme.secondary
                 )
               ),
@@ -1196,7 +1160,6 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
   List<Widget> _buildRouteDetails(AppLocalizations l10n, AiDiscoveredRoute r) {
     final rideProvider = Provider.of<RideProvider>(context, listen: false);
     bool isRouteActive = _liveBuses.any((b) => b.routeNumber == r.routeNumber);
-    final anyBusMatch = _anyBusMatch;
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -1219,7 +1182,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
             ),
             const SizedBox(width: 8),
             Text(
-              isRouteActive ? 'Route Details' : 'Waiting for bus...', 
+              isRouteActive ? 'Route Details' : 'Waiting for bus...',
               style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary)
             ),
             const Spacer(),
@@ -1238,38 +1201,6 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-            if (anyBusMatch)
-              Center(
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  duration: const Duration(seconds: 1),
-                  builder: (context, value, child) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondary.withOpacity(0.1 + (0.1 * value)),
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(color: Theme.of(context).colorScheme.secondary.withOpacity(0.3 * value)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 10, height: 10,
-                            decoration: BoxDecoration(color: Theme.of(context).colorScheme.secondary, shape: BoxShape.circle),
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            l10n.translate('live_tracking_badge').toUpperCase(),
-                            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.secondary, letterSpacing: 1.2),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ),
             Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -1280,7 +1211,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      r.routeNumber ?? '—',
+                      r.routeNumber,
                       style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.onSecondary),
                     ),
                   ),
@@ -1295,20 +1226,20 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                   const SizedBox(width: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                     child: Text(isRouteActive ? 'ACTIVE' : 'WAITING', style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                   ),
                 ],
               ),
               const SizedBox(height: 14),
               Text(
-                r.routeName, 
+                r.routeName,
                 style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 15, fontWeight: FontWeight.w500, height: 1.5),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 28),
-              // --- Redesigned Action Cluster ---
+
               Column(
                 children: [
                   SizedBox(
@@ -1324,7 +1255,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                           if (_userPosition != null) {
                             _mapController?.animateCamera(
                               gmaps.CameraUpdate.newLatLngZoom(
-                                gmaps.LatLng(_userPosition!.lat, _userPosition!.lng), 
+                                gmaps.LatLng(_userPosition!.lat, _userPosition!.lng),
                                 16.0
                               )
                             );
@@ -1362,7 +1293,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                             icon: Icon(rideProvider.isRemindMeActive ? Icons.notifications_active_rounded : Icons.notifications_none_rounded, size: 20),
                             label: Text(rideProvider.isRemindMeActive ? 'REMINDING...' : 'REMIND ME'),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: rideProvider.isRemindMeActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                              backgroundColor: rideProvider.isRemindMeActive ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
                               foregroundColor: rideProvider.isRemindMeActive ? Theme.of(context).colorScheme.onPrimary : Theme.of(context).colorScheme.onSurface,
                               elevation: 0,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: Theme.of(context).dividerColor)),
@@ -1377,7 +1308,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                           onPressed: () => _shareJourney(r),
                           icon: Icon(Icons.share_rounded, color: Theme.of(context).colorScheme.onSurfaceVariant),
                           style: IconButton.styleFrom(
-                            backgroundColor: Theme.of(context).colorScheme.onSurface.withOpacity(0.08),
+                            backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08),
                             padding: const EdgeInsets.all(16),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: Theme.of(context).dividerColor)),
                           ),
@@ -1398,11 +1329,11 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          anyBusMatch ? 'Bus is active. Tracking...' : 'Searching for live buses...',
+                          isRouteActive ? 'Bus is active. Tracking...' : 'Searching for live buses...',
                           style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurface, fontWeight: FontWeight.w800, fontSize: 14)
                         ),
                         const SizedBox(height: 4),
-                        if (!anyBusMatch)
+                        if (!isRouteActive)
                           Text(
                             'Checking route for live updates',
                             style: GoogleFonts.inter(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 13, height: 1.4),
@@ -1411,7 +1342,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                       ],
                     ),
                   ),
-                  Icon(Icons.sync_rounded, color: isRouteActive ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.onSurfaceVariant.withOpacity(0.5), size: 22),
+                  Icon(Icons.sync_rounded, color: isRouteActive ? Theme.of(context).colorScheme.secondary : Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.5), size: 22),
                 ],
               ),
             ],
@@ -1450,7 +1381,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         ),
       ),
       const SizedBox(height: 24),
-      // Bottom action removed as it is now inside the card
+
       const SizedBox(height: 12),
       const SizedBox(height: 32),
     ];
@@ -1462,7 +1393,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       final seg = r.segments[i];
       final isLast = i == r.segments.length - 1;
       final isWalk = seg.type == SegmentType.walking;
-      
+
       steps.add(
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -1474,9 +1405,9 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                   Container(
                     width: 32, height: 32,
                     decoration: BoxDecoration(
-                      color: isWalk 
+                      color: isWalk
                         ? (Theme.of(context).brightness == Brightness.dark ? Colors.white10 : Colors.grey[100])
-                        : AppColors.secondary.withOpacity(0.1),
+                        : AppColors.secondary.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -1500,8 +1431,8 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                         child: Text(
                           isWalk ? seg.instruction : 'Bus ${seg.routeNumber ?? ""}',
                           style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w600, 
-                            fontSize: 14, 
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
                             color: Theme.of(context).textTheme.bodyLarge?.color,
                             height: 1.3
                           ),
@@ -1510,9 +1441,9 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '${seg.durationMin} min', 
+                        '${seg.durationMin} min',
                         style: GoogleFonts.inter(
-                          color: Theme.of(context).textTheme.bodySmall?.color, 
+                          color: Theme.of(context).textTheme.bodySmall?.color,
                           fontSize: 12,
                           fontWeight: FontWeight.w500
                         )
@@ -1533,9 +1464,9 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary.withOpacity(0.08),
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.15)),
+        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1543,12 +1474,12 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: Theme.of(context).colorScheme.primary, size: 18),
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 30, // Fixed height for labels to handle wrap balancing
+            height: 30,
             child: Center(
               child: Text(
                 label,

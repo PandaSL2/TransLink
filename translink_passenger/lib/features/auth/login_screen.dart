@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_localizations.dart';
 import '../../core/utils/error_handler.dart';
 
@@ -80,8 +79,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -97,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: [Theme.of(context).colorScheme.primary, const Color(0xFF1D4ED8)]),
                   borderRadius: BorderRadius.circular(22),
-                  boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), blurRadius: 20)],
+                  boxShadow: [BoxShadow(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3), blurRadius: 20)],
                 ),
                 child: const Icon(Icons.directions_bus_rounded, color: Colors.white, size: 36),
               ),
@@ -117,9 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Theme.of(context).colorScheme.error.withOpacity(0.2)),
+                    border: Border.all(color: Theme.of(context).colorScheme.error.withValues(alpha: 0.2)),
                   ),
                   child: Row(children: [
                     Icon(Icons.error_outline_rounded, color: Theme.of(context).colorScheme.error, size: 20),
@@ -129,20 +126,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 24),
               ],
-              
+
               if (_isSignUp) ...[
                 _buildField(_nameController, 'Full Name', Icons.person_outline_rounded),
                 const SizedBox(height: 16),
               ],
               _buildField(_emailController, 'Email Address', Icons.alternate_email_rounded, keyboard: TextInputType.emailAddress),
               const SizedBox(height: 16),
-              _buildField(_passwordController, 'Password', Icons.lock_outline_rounded, obscure: !_showPassword, 
+              _buildField(_passwordController, 'Password', Icons.lock_outline_rounded, obscure: !_showPassword,
                 suffix: IconButton(
                   icon: Icon(_showPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
                   onPressed: () => setState(() => _showPassword = !_showPassword),
                 )
               ),
-              
+
               const SizedBox(height: 32),
               SizedBox(
                 width: double.infinity,
@@ -153,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                     elevation: 0,
                   ),
-                  child: _loading 
+                  child: _loading
                     ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                     : Text(_isSignUp ? 'REGISTER NOW' : 'SIGN IN', style: GoogleFonts.outfit(fontWeight: FontWeight.w800, fontSize: 16, letterSpacing: 1)),
                 ),

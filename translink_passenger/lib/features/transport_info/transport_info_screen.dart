@@ -47,7 +47,6 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
     final upcoming = TimetableService.getUpcoming(allDepartures: departures, count: 1);
     final delay = matchProfiles.isNotEmpty ? matchProfiles.first.delayFactorMinutes : 5;
 
-    // Find current bus position in stop list
     int currentIdx = 0;
     if (upcoming.isNotEmpty) {
       final dep = upcoming.first;
@@ -84,7 +83,7 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // ── Route Summary Card ────────────────────
+
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
@@ -92,7 +91,7 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                     borderRadius: BorderRadius.circular(24),
                     boxShadow: [
                       BoxShadow(
-                        color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       )
@@ -103,12 +102,12 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text('${AppLocalizations.of(context)!.translate('route_text')} ${widget.route.routeNumber}', style: GoogleFonts.inter(color: Colors.white.withOpacity(0.75), fontSize: 12)),
+                          Text('${AppLocalizations.of(context)!.translate('route_text')} ${widget.route.routeNumber}', style: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.75), fontSize: 12)),
                           Text(widget.route.name, style: GoogleFonts.inter(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
                         ]),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(10)),
                           child: Row(children: [
                             const Icon(Icons.directions_bus_rounded, color: Colors.white, size: 14),
                             const SizedBox(width: 4),
@@ -121,14 +120,14 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                     Row(children: [
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(AppLocalizations.of(context)!.translate('from_label'), style: GoogleFonts.inter(color: Colors.white.withOpacity(0.65), fontSize: 11)),
+                          Text(AppLocalizations.of(context)!.translate('from_label'), style: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.65), fontSize: 11)),
                           Text(widget.variant.originName, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
                         ]),
                       ),
                       const Icon(Icons.arrow_forward_rounded, color: Colors.white70, size: 18),
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                          Text(AppLocalizations.of(context)!.translate('to_label'), style: GoogleFonts.inter(color: Colors.white.withOpacity(0.65), fontSize: 11)),
+                          Text(AppLocalizations.of(context)!.translate('to_label'), style: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.65), fontSize: 11)),
                           Text(widget.variant.destinationName, style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600), textAlign: TextAlign.right),
                         ]),
                       ),
@@ -137,7 +136,7 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                        decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
                         child: Row(children: [
                           const Icon(Icons.schedule_rounded, color: Colors.white70, size: 16),
                           const SizedBox(width: 8),
@@ -152,7 +151,6 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // ── Stop Timeline ─────────────────────────
                 Text(AppLocalizations.of(context)!.translate('stop_timeline'), style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color)),
                 const SizedBox(height: 16),
                 if (_stops.isEmpty)
@@ -181,7 +179,7 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Timeline indicator ────────────────────────
+
           SizedBox(
             width: 36,
             child: Column(
@@ -194,9 +192,9 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                   width: isCurrent ? 14 : 10,
                   height: isCurrent ? 14 : 10,
                   decoration: BoxDecoration(
-                    color: isCurrent ? AppColors.secondary : (isPassed ? AppColors.secondary.withOpacity(0.4) : Theme.of(context).dividerColor),
+                    color: isCurrent ? AppColors.secondary : (isPassed ? AppColors.secondary.withValues(alpha: 0.4) : Theme.of(context).dividerColor),
                     shape: BoxShape.circle,
-                    border: isCurrent ? Border.all(color: AppColors.secondary.withOpacity(0.3), width: 3) : null,
+                    border: isCurrent ? Border.all(color: AppColors.secondary.withValues(alpha: 0.3), width: 3) : null,
                   ),
                 ),
                 if (!isLast)
@@ -208,7 +206,6 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
           ),
           const SizedBox(width: 12),
 
-          // ── Stop info ─────────────────────────────────
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
@@ -234,7 +231,7 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                   if (isCurrent)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         const Icon(Icons.directions_bus_rounded, color: AppColors.secondary, size: 13),
                         const SizedBox(width: 4),

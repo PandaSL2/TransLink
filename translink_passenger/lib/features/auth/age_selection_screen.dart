@@ -46,7 +46,7 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
     return Scaffold(
       body: Stack(
         children: [
-          // ── Sri Lanka themed background gradient ────────────────
+
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -59,14 +59,13 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
             ),
           ),
 
-          // ── Decorative circles (subtle Sri Lanka flag inspired) ─
           Positioned(
             top: -60, right: -60,
             child: Container(
               width: 200, height: 200,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.05),
+                color: Colors.white.withValues(alpha: 0.05),
               ),
             ),
           ),
@@ -76,12 +75,11 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
               width: 150, height: 150,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: const Color(0xFFF97316).withOpacity(0.08),
+                color: const Color(0xFFF97316).withValues(alpha: 0.08),
               ),
             ),
           ),
 
-          // ── Content ────────────────────────────────────────────
           SafeArea(
             child: FadeTransition(
               opacity: _fadeAnim,
@@ -92,13 +90,12 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
                   children: [
                     const SizedBox(height: 24),
 
-                    // Header
                     Text(
                       'TransLink',
                       style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white.withOpacity(0.7),
+                        color: Colors.white.withValues(alpha: 0.7),
                         letterSpacing: 2,
                       ),
                     ),
@@ -118,14 +115,13 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
                       'We personalise the app experience\nfor you — text size, layout and more.',
                       style: GoogleFonts.inter(
                         fontSize: 15,
-                        color: Colors.white.withOpacity(0.75),
+                        color: Colors.white.withValues(alpha: 0.75),
                         height: 1.5,
                       ),
                     ),
 
                     const SizedBox(height: 40),
 
-                    // ── Age Group Cards ──────────────────────────
                     _AgeCard(
                       emoji: '⚡',
                       range: '12 – 30',
@@ -158,7 +154,6 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
 
                     const SizedBox(height: 40),
 
-                    // ── Confirm Button ───────────────────────────
                     AnimatedOpacity(
                       opacity: _selected != null ? 1.0 : 0.4,
                       duration: const Duration(milliseconds: 250),
@@ -193,7 +188,7 @@ class _AgeSelectionScreenState extends State<AgeSelectionScreen>
                         'You can change this anytime in Settings',
                         style: GoogleFonts.inter(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.5),
+                          color: Colors.white.withValues(alpha: 0.5),
                         ),
                       ),
                     ),
@@ -239,26 +234,26 @@ class _AgeCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? Colors.white
-              : Colors.white.withOpacity(0.1),
+              : Colors.white.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? Colors.white : Colors.white.withOpacity(0.2),
+            color: selected ? Colors.white : Colors.white.withValues(alpha: 0.2),
             width: selected ? 2 : 1,
           ),
           boxShadow: selected
-              ? [BoxShadow(color: Colors.black.withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 8))]
+              ? [BoxShadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))]
               : [],
         ),
         child: Row(
           children: [
-            // Emoji icon
+
             Container(
               width: 52,
               height: 52,
               decoration: BoxDecoration(
                 color: selected
-                    ? AppColors.primary.withOpacity(0.1)
-                    : Colors.white.withOpacity(0.1),
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Colors.white.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Center(
@@ -267,7 +262,6 @@ class _AgeCard extends StatelessWidget {
             ),
             const SizedBox(width: 16),
 
-            // Text
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,8 +281,8 @@ class _AgeCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: selected
-                              ? AppColors.primary.withOpacity(0.1)
-                              : Colors.white.withOpacity(0.15),
+                              ? AppColors.primary.withValues(alpha: 0.1)
+                              : Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Text(
@@ -308,15 +302,14 @@ class _AgeCard extends StatelessWidget {
                     style: GoogleFonts.inter(
                       fontSize: 12,
                       color: selected
-                          ? Colors.black.withOpacity(0.5)
-                          : Colors.white.withOpacity(0.65),
+                          ? Colors.black.withValues(alpha: 0.5)
+                          : Colors.white.withValues(alpha: 0.65),
                     ),
                   ),
                 ],
               ),
             ),
 
-            // Selection indicator
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               width: 22,
@@ -325,7 +318,7 @@ class _AgeCard extends StatelessWidget {
                 shape: BoxShape.circle,
                 color: selected ? AppColors.primary : Colors.transparent,
                 border: Border.all(
-                  color: selected ? AppColors.primary : Colors.white.withOpacity(0.4),
+                  color: selected ? AppColors.primary : Colors.white.withValues(alpha: 0.4),
                   width: 2,
                 ),
               ),

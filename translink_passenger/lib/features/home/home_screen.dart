@@ -32,7 +32,6 @@ class HomeScreenState extends State<HomeScreen> {
   bool _isLoadingStops = true;
   bool _isListening = false;
 
-  // GPS reverse-geocoded address shown in the From row
   String _currentLocationLabel = 'Detecting location...';
   TripModel? _customOrigin;
 
@@ -53,7 +52,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  /// Reverse-geocode the user's GPS position into a human-readable address.
   Future<void> _resolveCurrentAddress() async {
     try {
       final pos = await _locationService.getCurrentLocation();
@@ -64,14 +62,13 @@ class HomeScreenState extends State<HomeScreen> {
       final placemarks = await placemarkFromCoordinates(pos.lat, pos.lng);
       if (placemarks.isNotEmpty && mounted) {
         final p = placemarks.first;
-        // Focus on exact locality (e.g. Thalagala instead of Homagama)
+
         final parts = [p.street, p.subLocality, p.locality]
             .where((s) => s != null && s.isNotEmpty)
             .toList();
-            
-        // Filter out Google Maps plus codes like 'WV2C+43'
+
         final cleanParts = parts.where((p) => !p!.contains('+')).toSet().toList();
-        
+
         setState(() {
           _currentLocationLabel = cleanParts.isNotEmpty ? cleanParts.first! : 'My Location';
         });
@@ -114,7 +111,7 @@ class HomeScreenState extends State<HomeScreen> {
 
   void _navigateToSearch({String? query}) async {
     final res = await Navigator.push(
-      context, 
+      context,
       MaterialPageRoute(builder: (c) => PlaceSearchScreen(initialQuery: query))
     );
     if (res is TripModel && mounted) {
@@ -157,7 +154,7 @@ class HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final theme = Theme.of(context);
-    
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
@@ -208,8 +205,8 @@ class HomeScreenState extends State<HomeScreen> {
             Text(
               'TransLink',
               style: GoogleFonts.outfit(
-                fontWeight: FontWeight.w900, 
-                fontSize: 24, 
+                fontWeight: FontWeight.w900,
+                fontSize: 24,
                 color: Theme.of(context).colorScheme.primary,
                 letterSpacing: -1,
               ),
@@ -226,11 +223,11 @@ class HomeScreenState extends State<HomeScreen> {
             return Container(
               margin: const EdgeInsets.only(right: 8),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded, 
+                icon: Icon(isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
                   color: Theme.of(context).colorScheme.onSurface, size: 20),
                 onPressed: () => settings.toggleTheme(),
               ),
@@ -248,7 +245,7 @@ class HomeScreenState extends State<HomeScreen> {
       icon: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
           shape: BoxShape.circle,
         ),
         child: Icon(Icons.language_rounded, color: Theme.of(context).colorScheme.onSurface, size: 20),
@@ -278,23 +275,23 @@ class HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
       ),
       child: Column(
         children: [
-          // ── From row (GPS address, tappable to override) ────────
+
           GestureDetector(
             onTap: () async {
               final res = await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const PlaceSearchScreen()),
               );
-              // If user picked a custom from-location, update label
+
               if (res is TripModel && res.destinationName != null && mounted) {
                 setState(() {
                   _customOrigin = res;
@@ -312,7 +309,7 @@ class HomeScreenState extends State<HomeScreen> {
                       color: AppColors.liveGreen,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: AppColors.liveGreen.withOpacity(0.35), width: 3),
+                        color: AppColors.liveGreen.withValues(alpha: 0.35), width: 3),
                     ),
                   ),
                   const SizedBox(width: 14),
@@ -335,14 +332,12 @@ class HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ── Connector line ──────────────────────────────────────
           Padding(
             padding: const EdgeInsets.only(left: 24),
             child: Container(width: 1, height: 10,
                 color: Theme.of(context).dividerColor),
           ),
 
-          // ── To row (search destination + voice mic here) ────────
           GestureDetector(
             onTap: () => _navigateToSearch(),
             child: Padding(
@@ -366,22 +361,22 @@ class HomeScreenState extends State<HomeScreen> {
                         color: Theme.of(context)
                             .colorScheme
                             .onSurfaceVariant
-                            .withOpacity(0.55),
+                            .withValues(alpha: 0.55),
                       ),
                     ),
                   ),
-                  // Voice button now lives in destination row
+
                   GestureDetector(
                     onTap: _startListening,
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: _isListening
-                            ? AppColors.error.withOpacity(0.1)
+                            ? AppColors.error.withValues(alpha: 0.1)
                             : Theme.of(context)
                                 .colorScheme
                                 .primary
-                                .withOpacity(0.08),
+                                .withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -400,7 +395,6 @@ class HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // ── Quick-place chips ───────────────────────────────────
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             child: SingleChildScrollView(
@@ -437,10 +431,9 @@ class HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // ── Home chip logic ───────────────────────────────────────────────
   void _tapHomeChip(SettingsProvider settings, AppLocalizations l10n) async {
     if (settings.homePlace != null) {
-      // Navigate directly
+
       final shell = context.findAncestorStateOfType<MainShellState>();
       if (shell != null) {
         shell.setTab(1, argument: TripModel(
@@ -453,7 +446,7 @@ class HomeScreenState extends State<HomeScreen> {
         ));
       }
     } else {
-      // Prompt user to set home
+
       _showSetPlaceSheet(
         title: l10n.translate('search_set_home'),
         icon: Icons.home_rounded,
@@ -462,7 +455,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Work chip logic ───────────────────────────────────────────────
   void _tapWorkChip(SettingsProvider settings, AppLocalizations l10n) async {
     if (settings.workPlace != null) {
       final shell = context.findAncestorStateOfType<MainShellState>();
@@ -485,7 +477,6 @@ class HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ── Set place bottom sheet ────────────────────────────────────────
   void _showSetPlaceSheet({
     required String title,
     required IconData icon,
@@ -509,10 +500,10 @@ class HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.07),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.07),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.15)),
+              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -570,11 +561,11 @@ class HomeScreenState extends State<HomeScreen> {
         width: double.infinity,
         padding: const EdgeInsets.all(32),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor, 
-          borderRadius: BorderRadius.circular(24), 
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(24),
           border: Border.all(color: Theme.of(context).dividerColor)
         ),
-        child: Center(child: Text(l10n.translate('no_stops_found') ?? 'No bus stops found nearby.', style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
+        child: Center(child: Text(l10n.translate('no_stops_found'), style: GoogleFonts.inter(fontWeight: FontWeight.w600))),
       );
     }
 
@@ -610,7 +601,7 @@ class HomeScreenState extends State<HomeScreen> {
       width: 220,
       margin: const EdgeInsets.only(right: 20, bottom: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(24),
       ),
     );
@@ -643,9 +634,9 @@ class HomeScreenState extends State<HomeScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.06),
+            color: color.withValues(alpha: 0.06),
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color.withOpacity(0.12)),
+            border: Border.all(color: color.withValues(alpha: 0.12)),
           ),
           child: Column(
             children: [
@@ -670,9 +661,6 @@ class HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// ── Set Place Bottom Sheet ────────────────────────────────────────────────────
-/// Shown when user taps Home or Work chip without a saved place.
-/// Lets them search and save their location.
 class _SetPlaceSheet extends StatefulWidget {
   final String title;
   final IconData icon;
@@ -703,7 +691,7 @@ class _SetPlaceSheetState extends State<_SetPlaceSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
+
           Center(
             child: Container(
               width: 40, height: 4,
@@ -719,7 +707,7 @@ class _SetPlaceSheetState extends State<_SetPlaceSheet> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(widget.icon, color: AppColors.primary, size: 20),

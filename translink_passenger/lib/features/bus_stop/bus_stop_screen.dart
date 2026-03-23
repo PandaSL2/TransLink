@@ -37,7 +37,7 @@ class _BusStopScreenState extends State<BusStopScreen> {
       for (final route in routes) {
         final variants = await SupabaseService.getRouteVariants(route.id);
         for (final variant in variants) {
-          // Check if this stop is served by this variant
+
           final sequences = await SupabaseService.getRouteStopSequences(variant.id);
           final seq = sequences.cast<RouteStopSequenceModel?>().firstWhere(
             (s) => s?.stopId == widget.stop.id,
@@ -105,7 +105,7 @@ class _BusStopScreenState extends State<BusStopScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            // ── Stop Info Card ────────────────────────────
+
             Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
@@ -116,7 +116,7 @@ class _BusStopScreenState extends State<BusStopScreen> {
                 children: [
                   Container(
                     width: 48, height: 48,
-                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(14)),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(14)),
                     child: const Icon(Icons.place_rounded, color: Colors.white, size: 26),
                   ),
                   const SizedBox(width: 14),
@@ -124,7 +124,7 @@ class _BusStopScreenState extends State<BusStopScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(widget.stop.name, style: GoogleFonts.inter(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700)),
                       if (widget.stop.address != null)
-                        Text(widget.stop.address!, style: GoogleFonts.inter(color: Colors.white.withOpacity(0.75), fontSize: 12)),
+                        Text(widget.stop.address!, style: GoogleFonts.inter(color: Colors.white.withValues(alpha: 0.75), fontSize: 12)),
                     ]),
                   ),
                 ],
@@ -132,14 +132,13 @@ class _BusStopScreenState extends State<BusStopScreen> {
             ),
             const SizedBox(height: 24),
 
-            // ── Arrivals ──────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(child: Text(l10n.translate('upcoming_arrivals'), style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color), overflow: TextOverflow.ellipsis)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: AppColors.accent.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
+                  decoration: BoxDecoration(color: AppColors.accent.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
                   child: Text(l10n.translate('live'), style: GoogleFonts.inter(color: AppColors.accent, fontSize: 11, fontWeight: FontWeight.w600)),
                 ),
               ],
@@ -159,17 +158,16 @@ class _BusStopScreenState extends State<BusStopScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Header
+
                     _tableHeader(l10n),
                     Divider(height: 1, color: Theme.of(context).dividerColor),
-                    // Rows
+
                     ..._arrivals.map((a) => _arrivalRow(a, l10n)),
                   ],
                 ),
               ),
             const SizedBox(height: 24),
 
-            // ── Show Route Button ─────────────────────────
             SizedBox(
               width: double.infinity,
               height: 54,
@@ -218,7 +216,7 @@ class _BusStopScreenState extends State<BusStopScreen> {
                 flex: 1,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(color: AppColors.secondary.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                  decoration: BoxDecoration(color: AppColors.secondary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(a.busId, style: GoogleFonts.inter(color: AppColors.secondary, fontSize: 12, fontWeight: FontWeight.w700), textAlign: TextAlign.center),
@@ -255,13 +253,13 @@ class _BusStopScreenState extends State<BusStopScreen> {
     String label;
     switch (status) {
       case 'delayed':
-        bg = AppColors.secondary.withOpacity(0.15); fg = AppColors.secondary; label = l10n.translate('delayed');
+        bg = AppColors.secondary.withValues(alpha: 0.15); fg = AppColors.secondary; label = l10n.translate('delayed');
         break;
       case 'cancelled':
-        bg = AppColors.error.withOpacity(0.15); fg = AppColors.error; label = l10n.translate('cancelled');
+        bg = AppColors.error.withValues(alpha: 0.15); fg = AppColors.error; label = l10n.translate('cancelled');
         break;
       default:
-        bg = AppColors.accent.withOpacity(0.15); fg = AppColors.accent; label = l10n.translate('on_time');
+        bg = AppColors.accent.withValues(alpha: 0.15); fg = AppColors.accent; label = l10n.translate('on_time');
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

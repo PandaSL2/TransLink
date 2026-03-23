@@ -19,11 +19,11 @@ class _LinkCardScreenState extends State<LinkCardScreen> {
 
   Future<void> _saveCard() async {
     if (_cardNumberController.text.length < 16) return;
-    
+
     setState(() => _isSaving = true);
-    // Simulate API delay
+
     await Future.delayed(const Duration(seconds: 2));
-    
+
     final cardData = {
       'card_last_4': _cardNumberController.text.substring(_cardNumberController.text.length - 4),
       'card_brand': _cardNumberController.text.startsWith('4') ? 'Visa' : 'MasterCard',
@@ -32,7 +32,7 @@ class _LinkCardScreenState extends State<LinkCardScreen> {
     };
 
     await SupabaseService.addPaymentCard(cardData);
-    
+
     if (mounted) {
        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
          content: Text('Card Linked Successfully!'),
@@ -58,8 +58,8 @@ class _LinkCardScreenState extends State<LinkCardScreen> {
             const SizedBox(height: 32),
             _inputField('Cardholder Name', _cardNameController, 'John Doe'),
             const SizedBox(height: 20),
-            _inputField('Card Number', _cardNumberController, '0000 0000 0000 0000', 
-              keyboard: TextInputType.number, 
+            _inputField('Card Number', _cardNumberController, '0000 0000 0000 0000',
+              keyboard: TextInputType.number,
               formatters: [
                 FilteringTextInputFormatter.digitsOnly,
                 LengthLimitingTextInputFormatter(16),
@@ -68,7 +68,7 @@ class _LinkCardScreenState extends State<LinkCardScreen> {
             const SizedBox(height: 20),
             Row(
               children: [
-                Expanded(child: _inputField('Expiry', _expiryController, 'MM/YY', 
+                Expanded(child: _inputField('Expiry', _expiryController, 'MM/YY',
                   keyboard: TextInputType.number,
                   formatters: [
                     FilteringTextInputFormatter.digitsOnly,
@@ -91,7 +91,7 @@ class _LinkCardScreenState extends State<LinkCardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
                 ),
-                child: _isSaving 
+                child: _isSaving
                   ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
                   : Text('Link Card Securely', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
@@ -119,7 +119,7 @@ class _LinkCardScreenState extends State<LinkCardScreen> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 10))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

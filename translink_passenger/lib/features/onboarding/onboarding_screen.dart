@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/utils/app_localizations.dart';
 import '../../core/services/settings_provider.dart';
-import '../../core/theme/app_theme.dart';
 
 class OnboardingScreen extends StatefulWidget {
   final VoidCallback onFinish;
@@ -63,7 +62,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Logo/Name
+
                   Text(
                     'TransLink',
                     style: GoogleFonts.outfit(
@@ -77,7 +76,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     child: Text(
                       l10n.translate('skip_nav'),
                       style: GoogleFonts.inter(
-                        color: colorScheme.onSurface.withOpacity(0.5),
+                        color: colorScheme.onSurface.withValues(alpha: 0.5),
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -137,7 +136,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         backgroundColor: colorScheme.primary,
                         foregroundColor: colorScheme.onPrimary,
                         elevation: 8,
-                        shadowColor: colorScheme.primary.withOpacity(0.4),
+                        shadowColor: colorScheme.primary.withValues(alpha: 0.4),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -193,7 +192,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 16,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 32),
@@ -226,7 +225,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             width: 2,
           ),
           boxShadow: isSelected ? [
-            BoxShadow(color: theme.colorScheme.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))
+            BoxShadow(color: theme.colorScheme.primary.withValues(alpha: 0.3), blurRadius: 10, offset: const Offset(0, 4))
           ] : null,
         ),
         child: Row(
@@ -260,7 +259,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       decoration: BoxDecoration(
         color: _currentPage == index
             ? theme.colorScheme.primary
-            : theme.colorScheme.primary.withOpacity(0.2),
+            : theme.colorScheme.primary.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(4),
       ),
     );
@@ -291,7 +290,7 @@ class OnboardingContent extends StatelessWidget {
               borderRadius: BorderRadius.circular(32),
               boxShadow: [
                 BoxShadow(
-                  color: theme.shadowColor.withOpacity(0.05),
+                  color: theme.shadowColor.withValues(alpha: 0.05),
                   blurRadius: 40,
                   offset: const Offset(0, 20),
                 )
@@ -323,7 +322,7 @@ class OnboardingContent extends StatelessWidget {
             textAlign: TextAlign.center,
             style: GoogleFonts.inter(
               fontSize: 17,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               height: 1.6,
             ),
           ),
