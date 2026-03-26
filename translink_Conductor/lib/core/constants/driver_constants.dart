@@ -4,22 +4,19 @@ class DriverConstants {
 
   static const String groqApiKey = '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';
 
-  // Settings keys
   static const String keyBusNumber        = 'bus_number';
   static const String keyRouteNumber      = 'route_number';
   static const String keyRouteName        = 'route_name';
   static const String keyIsTracking       = 'is_tracking';
   static const String keyLastShiftCheck   = 'last_shift_check';
-  static const String keyIsLoggedIn       = 'is_logged_in'; // true after first-time setup
-  static const String keyFleetType        = 'fleet_type';   // 'private' or 'ctb'
+  static const String keyIsLoggedIn       = 'is_logged_in';
+  static const String keyFleetType        = 'fleet_type';
 
-  // Schedule keys (populated from RouteScheduleService on setup)
   static const String keyHeadwayMinutes   = 'headway_minutes';
   static const String keyScheduleLabel    = 'schedule_label';
   static const String keyFirstBus         = 'first_bus';
   static const String keyLastBus          = 'last_bus';
   static const String keyShiftStartedAt   = 'shift_started_at';
 
-  // App strings
   static const String appName = 'TransLink Conductor';
 }

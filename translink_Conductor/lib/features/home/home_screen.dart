@@ -9,8 +9,7 @@ import '../../core/constants/driver_constants.dart';
 import '../../core/utils/error_handler.dart';
 import '../../services/route_schedule_service.dart';
 import '../../services/schedule_watch_service.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:geolocator/geolocator.dart'; // Added
+import 'package:geolocator/geolocator.dart';
 import '../../services/supabase_service.dart';
 import '../../services/location_service.dart';
 import '../setup/setup_screen.dart';
@@ -18,17 +17,13 @@ import '../../core/utils/app_localizations.dart';
 import '../../core/services/settings_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
-import './widgets/fare_calculator_sheet.dart';
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
-// import 'package:share_plus/share_plus.dart';
-
-// ── Problem types the driver can report ─────────────────────────────────────
 
 class _ProblemOption {
-  final String code;       // stored as 'status' in Supabase
+  final String code;
   final String label;
   final String emoji;
   final String description;
@@ -46,7 +41,7 @@ class _ProblemOption {
 const List<_ProblemOption> _problemOptions = [
   _ProblemOption(
     code: 'breakdown',
-    label: 'Breakdown', // We'll use l10n.translate(opt.code) in UI
+    label: 'Breakdown',
     emoji: '🔧',
     description: 'Vehicle has broken down and cannot continue.',
     color: Color(0xFFDC2626),
@@ -67,8 +62,6 @@ const List<_ProblemOption> _problemOptions = [
   ),
 ];
 
-// ── Screen ───────────────────────────────────────────────────────────────────
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -87,16 +80,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   bool   _isTracking    = false;
   bool   _withinHours   = false;
   int    _minsLeft      = 0;
-  String _syncStatus    = 'Offline'; // Added: Real-time sync diagnostic
+  String _syncStatus    = 'Offline';
   Color  _syncColor     = const Color(0xFF64748B);
 
-  /// 'on_time' | 'breakdown' | 'accident' | 'heavy_traffic' | … (see _problemOptions)
   String _currentStatus = 'on_time';
 
   Timer? _refreshTimer;
   double _tripRevenue = 0.0;
   int _passengerCount = 0;
-  final _manualFareCtrl = TextEditingController(text: '30'); // Default min fare
+  final _manualFareCtrl = TextEditingController(text: '30');
   int _currentTab = 0;
   DateTime? _lastScan;
   StreamSubscription? _revenueSub;
@@ -110,13 +102,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _initRevenueStream();
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) => _refreshState());
 
-    // 🛡️ Listen for background tracking errors (e.g. RLS Rejection)
     FlutterBackgroundService().on('trackingError').listen((event) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
       final rawMsg = event?['message'] ?? 'Database Sync Error';
       final msg = _getReadableErrorMessage(rawMsg, l10n);
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('⚠️ $msg'),
@@ -135,7 +126,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     _revenueSub?.cancel();
     _revenueSub = SupabaseService.getRevenueHistoryStream(busNum).listen((transactions) {
       if (!mounted) return;
-      
+
       final sessionStartStr = prefs.getString('lastRouteStartedAt');
       final sessionStart = sessionStartStr != null ? DateTime.parse(sessionStartStr) : DateTime(2000);
 
@@ -156,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           debugPrint('⚠️ [Revenue] Skipping malformed tx: $e');
         }
       }
-      
+
       setState(() {
         _tripRevenue = sessionTotal;
         _passengerCount = sessionCount;
@@ -166,7 +157,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       debugPrint('🚨 [Revenue Stream Error] $e');
     });
   }
-
 
   @override
   void dispose() {
@@ -180,15 +170,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadAndAutoStart();
-      _initRevenueStream(); // Re-establish data stream and refresh counters
+      _initRevenueStream();
     }
   }
 
-  // ── Auto-start logic ───────────────────────────────────────────────────────
-
   Future<void> _loadAndAutoStart() async {
-    // Just refresh the UI state. We don't auto-start tracking anymore 
-    // to give conductor manual control.
+
     await _refreshState();
   }
 
@@ -209,9 +196,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _currentStatus = prefs.getString('currentStatus')                  ?? 'on_time';
       _isTracking    = isRunning && (prefs.getBool(DriverConstants.keyIsTracking) ?? false);
 
-      // Fetch real operating hours if they belong to a known schedule
       final schedule = RouteScheduleService.getSchedule(routeNum);
-      _firstBus = schedule.firstBus; // Use the service as source of truth
+      _firstBus = schedule.firstBus;
       _lastBus  = schedule.lastBus;
 
       _withinHours   = routeNum.isNotEmpty
@@ -222,25 +208,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           : 0;
     });
 
-    // AUTO-STOP: shift ended
     if (_isTracking && !_withinHours && !kIsWeb) {
       await _doStopTracking(silent: true);
     }
   }
 
-  // ── Tracking controls ──────────────────────────────────────────────────────
-
   Future<void> _startTrackingManually() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     final l10n = AppLocalizations.of(context)!;
-    
+
+
     setState(() {
       _syncStatus = '🛰️ Getting GPS...';
       _syncColor  = Colors.orange;
     });
 
-    // 1. RECOVERY: Direct Initial Sync in UI Thread
-    // This bypasses the background isolate for the very first link to catch errors
     try {
       final pos = await Geolocator.getCurrentPosition(
         locationSettings: LocationSettings(accuracy: LocationAccuracy.high)
@@ -260,8 +243,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       );
 
       if (error != null) {
-        // 🚨 CRITICAL RECOVERY: If it's an Auth error, don't just show a Snackbar.
-        // Force a logout so the user can re-authenticate.
+
         if (error.contains('Auth') || error.contains('session')) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -270,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 backgroundColor: Color(0xFFDC2626),
               ),
             );
-            _logout(); // Re-authenticate automatically
+            _logout();
           }
           return;
         }
@@ -290,15 +272,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _syncColor  = Colors.red;
         });
       }
-      return; // Abort starting service if initial sync fails
+      return;
     }
-    
-    // START NEW SESSION: Reset transit data for this specific trip
+
     final startTime = DateTime.now().toUtc().toIso8601String();
     await prefs.setString('lastRouteStartedAt', startTime);
     await prefs.setBool(DriverConstants.keyIsTracking, true);
 
-    // 2. Launch background service for persistence
     final session = SupabaseService.currentSession;
     await LocationService.startTracking(
       accessToken: session?.accessToken,
@@ -310,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(l10n.translate('tracking_started_msg')), 
+          content: Text(l10n.translate('tracking_started_msg')),
           backgroundColor: const Color(0xFF10B981)
         ),
       );
@@ -325,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await LocationService.stopTracking();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(DriverConstants.keyIsTracking, false);
-    // Clear any problem status when stopping
+
     await prefs.setString('currentStatus', 'on_time');
     if (_busNumber.isNotEmpty) {
       await SupabaseService.removeLivePosition(_busNumber);
@@ -339,8 +319,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ── Problem reporting ──────────────────────────────────────────────────────
-
   Future<void> _showProblemSheet() async {
     if (!_isTracking) return;
 
@@ -351,9 +329,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       builder: (_) => _ProblemSheetContent(currentCode: _currentStatus),
     );
 
-    if (selected == null) return; // dismissed without selection
+    if (selected == null) return;
 
-    // Toggle:  tapping the same problem again clears it
     final newCode = (selected.code == _currentStatus) ? 'on_time' : selected.code;
     await _applyStatus(newCode);
   }
@@ -374,7 +351,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Future<void> _applyStatus(String code) async {
     setState(() => _currentStatus = code);
 
-    // Persist so the next GPS update from the background service carries it
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('currentStatus', code);
 
@@ -407,39 +383,33 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  // ── Conductor Actions ──────────────────────────────────────────────────────
-
-
-
   Future<void> _processScanResult(String code) async {
     if (_lastScan != null && DateTime.now().difference(_lastScan!) < const Duration(seconds: 2)) return;
     _lastScan = DateTime.now();
 
     try {
-      // 🛡️ ULTRA-DEFENSIVE PARSING
+
       final dynamic decoded = json.decode(code);
       if (decoded is! Map) throw "Invalid QR code format: Not a JSON map.";
-      
+
       final passengerId = (decoded['uid'] ?? decoded['id'])?.toString();
       if (passengerId == null || passengerId.isEmpty) throw "Invalid QR code: Missing user ID.";
 
-      // --- Fare Priority Logic ---
       double fare;
       String? passengerDest;
       if (decoded['fare'] != null) {
-        // Use Official Fare from Passenger's QR (Prevents overcharging)
+
         fare = (decoded['fare'] as num).toDouble();
         passengerDest = decoded['dest']?.toString();
       } else {
-        // Fallback to manual entry for simple UID-only QRs
+
         fare = double.tryParse(_manualFareCtrl.text) ?? 30.0;
       }
-      if (fare <= 0) fare = 30.0; // Fail-safe
+      if (fare <= 0) fare = 30.0;
 
       if (!mounted) return;
       setState(() => _isProcessing = true);
 
-      // 🛰️ GET POS-LOCK (OPTIONAL BUT DEFENSIVE)
       String stopName = "Station near current location";
       try {
         final pos = await LocationService.getCurrentLocation();
@@ -461,7 +431,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
       if (error == null) {
         _showSuccessFeedback(fare);
-        // ⚡ INSTANT LOCAL SYNC: Prevent revenue from staying at zero
+
         setState(() {
           _tripRevenue += fare;
           _passengerCount += 1;
@@ -507,19 +477,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   String _getReadableErrorMessage(dynamic error, AppLocalizations l10n) {
     final String msg = error.toString().toLowerCase();
-    
-    // Check for common network/database error keywords
-    if (msg.contains('socketexception') || 
-        msg.contains('failed host lookup') || 
+
+    if (msg.contains('socketexception') ||
+        msg.contains('failed host lookup') ||
         msg.contains('clientexception') ||
         msg.contains('network') ||
         msg.contains('http') ||
         msg.contains('connection')) {
       return l10n.translate('no_internet');
     }
-    
+
     if (msg.contains('auth') || msg.contains('session') || msg.contains('jwt')) {
-      return l10n.translate('login_required'); // Fallback to localized re-auth msg
+      return l10n.translate('login_required');
     }
 
     if (msg.contains('fleet_type')) {
@@ -536,7 +505,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _showErrorSnackBar(dynamic error) {
     final msg = ErrorHandler.getFriendlyMessage(error, context);
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Row(
         children: [
@@ -552,7 +521,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _scanQR() async {
     if (!_isTracking) return;
-    
+
     final String? result = await showGeneralDialog<String>(
       context: context,
       barrierDismissible: true,
@@ -570,10 +539,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Future<void> _openManualFare() async {
     final amount = double.tryParse(_manualFareCtrl.text) ?? 30.0;
-    
-    // Sync manual fare with database
+
     final error = await SupabaseService.processPayment(
-      passengerId: null, // No UID for manual entry
+      passengerId: null,
       amount: amount,
       busNumber: _busNumber,
       routeNumber: _routeNumber,
@@ -583,20 +551,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     if (error == null) {
       _showSuccessFeedback(amount);
-      // ⚡ INSTANT LOCAL SYNC: Prevent revenue from staying at zero
+
       setState(() {
         _tripRevenue += amount;
         _passengerCount += 1;
       });
-      
-      // Clear the field for next entry
-      _manualFareCtrl.text = "30"; 
+
+      _manualFareCtrl.text = "30";
     } else {
       _showErrorSnackBar(error);
     }
   }
-
-  // ── Logout ─────────────────────────────────────────────────────────────────
 
   void _confirmLogout() {
     final l10n = AppLocalizations.of(context)!;
@@ -639,9 +604,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -661,14 +626,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  // ── Build ──────────────────────────────────────────────────────────────────
-
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return PopScope(
       canPop: _currentTab == 0,
-      onPopInvoked: (didPop) {
+      onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _currentTab != 0) {
           setState(() => _currentTab = 0);
         }
@@ -690,7 +653,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
             if (_isProcessing)
               Container(
-                color: Colors.black.withOpacity(0.4),
+                color: Colors.black.withValues(alpha: 0.4),
                 child: const Center(
                   child: Card(
                     elevation: 8,
@@ -709,7 +672,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, -2))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, -2))],
           ),
           child: BottomNavigationBar(
             currentIndex: _currentTab,
@@ -730,7 +693,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Widget _buildRouteTab() {
-    final l10n = AppLocalizations.of(context)!;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -740,7 +703,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             const SizedBox(height: 32),
             _buildLargeStartButton(),
           ] else ...[
-            // Status is now gracefully shown in the AppBar badge
+
             _buildControlPanel(),
           ],
         ],
@@ -771,7 +734,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   Widget _buildLargeStartButton() {
     final l10n = AppLocalizations.of(context)!;
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 160,
       child: ElevatedButton(
@@ -781,7 +744,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           elevation: 8,
-          shadowColor: const Color(0xFF10B981).withOpacity(0.4),
+          shadowColor: const Color(0xFF10B981).withValues(alpha: 0.4),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -795,7 +758,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-
   Widget _buildProblemButton() {
     final l10n = AppLocalizations.of(context)!;
     final bool hasProblem = _currentStatus != 'on_time';
@@ -808,10 +770,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         icon: Icon(hasProblem ? Icons.error_rounded : Icons.report_problem_rounded),
         label: Text(hasProblem ? l10n.translate(activeOpt!.code) : l10n.translate('report_problem')),
         style: ElevatedButton.styleFrom(
-          backgroundColor: hasProblem ? activeOpt!.color.withOpacity(0.1) : Colors.white,
+          backgroundColor: hasProblem ? activeOpt!.color.withValues(alpha: 0.1) : Colors.white,
           foregroundColor: hasProblem ? activeOpt!.color : const Color(0xFFEA580C),
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: hasProblem ? activeOpt!.color : const Color(0xFFEA580C).withOpacity(0.2))),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: hasProblem ? activeOpt!.color : const Color(0xFFEA580C).withValues(alpha: 0.2))),
           textStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
         ),
       ),
@@ -835,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withOpacity(0.1),
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(Icons.directions_bus_rounded, color: Color(0xFF2563EB), size: 22),
@@ -866,7 +828,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ],
           ),
           const SizedBox(height: 12),
-          // 📡 SYSTEM SYNC STATUS (Hardened Badge)
+
           Row(
             children: [
               _buildMetricBadge(
@@ -888,7 +850,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const SizedBox(height: 12),
           Row(
             children: [
-              // Language Selector
+
               Expanded(
                 child: Container(
                   height: 40,
@@ -915,7 +877,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                               settings.languageName,
                               style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF2563EB)),
                             ),
-                            const Icon(Icons.arrow_drop_down_rounded, color: const Color(0xFF2563EB)),
+                            const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF2563EB)),
                             const SizedBox(width: 8),
                           ],
                         ),
@@ -939,7 +901,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   Widget _buildPersistentStatus() {
     final l10n = AppLocalizations.of(context)!;
     final color = _isTracking ? const Color(0xFF10B981) : const Color(0xFFF43F5E);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -1118,9 +1080,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     ]);
   }
 
-
-  // ── Control Panel ──────────────────────────────────────────────────────────
-
   Widget _buildControlPanel() {
     final bool hasProblem = _currentStatus != 'on_time';
     final _ProblemOption? activeOpt = hasProblem
@@ -1132,7 +1091,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 20, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 20, offset: const Offset(0, 8))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1144,7 +1103,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ]),
           const SizedBox(height: 16),
 
-          // ─── Main Action Row: SCAN QR ────────────────────────────────
           Row(
             children: [
               Expanded(
@@ -1187,7 +1145,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       backgroundColor: const Color(0xFF2563EB),
                       foregroundColor: Colors.white,
                       elevation: 4,
-                      shadowColor: const Color(0xFF2563EB).withOpacity(0.4),
+                      shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.4),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     ),
                     child: Column(
@@ -1206,13 +1164,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
           const SizedBox(height: 16),
 
-          // ─── Second Row: Manual Fare & Report ────────────────────────
           Row(children: [
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: _isTracking ? _openManualFare : null,
                 icon: const Icon(Icons.calculate_rounded),
-                label: Text(l10n.translate('manual_entry') ?? 'MANUAL FARE'),
+                label: Text(l10n.translate('manual_entry')),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFF1F5F9),
                   foregroundColor: const Color(0xFF1E293B),
@@ -1230,7 +1187,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 icon: Icon(hasProblem ? Icons.error_rounded : Icons.report_problem_rounded),
                 label: Text(hasProblem ? l10n.translate(activeOpt!.code) : l10n.translate('report_problem')),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: hasProblem ? activeOpt!.color.withOpacity(0.1) : const Color(0xFFFFF7ED),
+                  backgroundColor: hasProblem ? activeOpt!.color.withValues(alpha: 0.1) : const Color(0xFFFFF7ED),
                   foregroundColor: hasProblem ? activeOpt!.color : const Color(0xFFEA580C),
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   elevation: 0,
@@ -1245,10 +1202,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const Divider(height: 1),
           const SizedBox(height: 16),
 
-          // ─── START / STOP TRACKING ──────────────────────────────────
           SizedBox(
             width: double.infinity,
-            child: _isTracking 
+            child: _isTracking
               ? OutlinedButton.icon(
                   onPressed: _stopTrackingManually,
                   icon: const Icon(Icons.stop_circle_rounded, color: Color(0xFFDC2626)),
@@ -1290,12 +1246,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [BoxShadow(color: const Color(0xFF1E293B).withOpacity(0.3), blurRadius: 15, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: const Color(0xFF1E293B).withValues(alpha: 0.3), blurRadius: 15, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
           Text(l10n.translate('trip_revenue_title').toUpperCase(),
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white.withOpacity(0.5), letterSpacing: 1.5)),
+            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white.withValues(alpha: 0.5), letterSpacing: 1.5)),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1309,13 +1265,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20)),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.people_alt_rounded, color: Colors.white60, size: 14),
                 const SizedBox(width: 6),
-                Text(l10n.translate('passengers_count', args: {'count': '$_passengerCount'}), 
+                Text(l10n.translate('passengers_count', args: {'count': '$_passengerCount'}),
                   style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70)),
               ],
             ),
@@ -1324,11 +1280,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           TextButton.icon(
             onPressed: _showRevenueHistoryModal,
             icon: const Icon(Icons.history_rounded, color: Color(0xFF10B981), size: 16),
-            label: Text(l10n.translate('view_history'), 
+            label: Text(l10n.translate('view_history'),
               style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white70, letterSpacing: 0.5)),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              backgroundColor: Colors.white.withOpacity(0.05),
+              backgroundColor: Colors.white.withValues(alpha: 0.05),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
@@ -1338,7 +1294,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   }
 
   Future<void> _showRevenueHistoryModal() async {
-    final l10n = AppLocalizations.of(context)!;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1364,7 +1320,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (lat > 6.910 && lat < 6.940 && lng > 79.840 && lng < 79.870) return "Colombo Fort Near Area";
     if (lat > 6.700 && lat < 6.720 && lng > 80.050 && lng < 80.070) return "Horana City";
     if (lat > 6.780 && lat < 6.810 && lng > 80.040 && lng < 80.060) return "Thalagala Junction";
-    
+
     return "Station near ${lat.toStringAsFixed(3)}, ${lng.toStringAsFixed(3)}";
   }
 
@@ -1393,7 +1349,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
     });
     final l10n = AppLocalizations.of(context)!;
     final dateStr = DateTime.now().toString().split(' ')[0];
-    
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1442,7 +1398,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                 final tempDir = await getTemporaryDirectory();
                 final file = File('${tempDir.path}/Revenue_Report_${widget.busNumber}.png');
                 await file.writeAsBytes(pngBytes);
-                // Share.shareXFiles([XFile(file.path)], text: 'Monthly Revenue Report for Bus ${widget.busNumber}');
+
               } catch (e) {
                 debugPrint('Export error: $e');
               }
@@ -1483,8 +1439,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                 if (list.isEmpty) {
                   return Center(child: Text(l10n.translate('no_history')));
                 }
-                
-                // Group by date (YYYY-MM-DD)
+
                 final Map<String, List<Map<String, dynamic>>> grouped = {};
                 for (final tx in list) {
                   final date = DateTime.parse(tx['created_at']).toLocal();
@@ -1492,7 +1447,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                   if (!grouped.containsKey(dateStr)) grouped[dateStr] = [];
                   grouped[dateStr]!.add(tx);
                 }
-                
+
                 final sortedDates = grouped.keys.toList()..sort((a, b) => b.compareTo(a));
 
                 return Column(
@@ -1506,7 +1461,7 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                           final dayTx = grouped[dateStr]!;
                           final totalDay = dayTx.fold(0.0, (sum, tx) => sum + (tx['amount'] as num).toDouble());
                           final dateObj = DateTime.parse(dateStr);
-                          
+
                           return Card(
                             margin: const EdgeInsets.only(bottom: 12),
                             elevation: 0,
@@ -1531,14 +1486,14 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
                                     itemCount: dayTx.length,
-                                    separatorBuilder: (_, __) => const Divider(height: 1),
+                                    separatorBuilder: (_, _) => const Divider(height: 1),
                                     itemBuilder: (context, j) {
                                       final tx = dayTx[j];
                                       final amt = (tx['amount'] as num).toDouble();
                                       final tDate = DateTime.parse(tx['created_at']).toLocal();
                                       final pId = tx['passenger_id'];
-                                      final titleText = pId == null 
-                                          ? "Manual Payment" 
+                                      final titleText = pId == null
+                                          ? "Manual Payment"
                                           : "Passenger #${pId.toString().substring(0, 8)}";
 
                                       return ListTile(
@@ -1586,8 +1541,6 @@ class _RevenueHistoryContentState extends State<_RevenueHistoryContent> {
   }
 }
 
-// ── Problem Selection Bottom Sheet ───────────────────────────────────────────
-
 class _ProblemSheetContent extends StatelessWidget {
   final String currentCode;
   const _ProblemSheetContent({required this.currentCode});
@@ -1605,14 +1558,13 @@ class _ProblemSheetContent extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Handle
+
           Center(child: Container(
             width: 40, height: 5,
             decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(3)),
           )),
           const SizedBox(height: 20),
 
-          // Header
           Row(children: [
             const Icon(Icons.report_problem_rounded, color: Color(0xFFF59E0B), size: 22),
             const SizedBox(width: 10),
@@ -1625,7 +1577,6 @@ class _ProblemSheetContent extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Problem options grid
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
@@ -1670,7 +1621,6 @@ class _ProblemSheetContent extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          // Cancel / Clear buttons
           Row(children: [
             Expanded(
               child: OutlinedButton(
@@ -1687,8 +1637,7 @@ class _ProblemSheetContent extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton.icon(
-                  // returning null signals "I want to clear the problem"
-                  // We reuse the current option passed back to the parent which toggles it
+
                   onPressed: () => Navigator.pop(context, _problemOptions.firstWhere((o) => o.code == currentCode)),
                   icon: const Icon(Icons.check_circle_outline_rounded),
                   label: Text(l10n.translate('clear_problem')),
@@ -1709,8 +1658,6 @@ class _ProblemSheetContent extends StatelessWidget {
     );
   }
 }
-
-// ── QR Scanner Dialog ────────────────────────────────────────────────────────
 
 class _QRScannerDialog extends StatefulWidget {
   const _QRScannerDialog();
@@ -1736,8 +1683,8 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Scan Passenger QR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)), 
-        backgroundColor: Colors.black, 
+        title: const Text('Scan Passenger QR', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -1775,8 +1722,8 @@ class _QRScannerDialogState extends State<_QRScannerDialog> {
           Positioned(
             bottom: 60, left: 0, right: 0,
             child: Text(
-              'Align QR code within the frame', 
-              textAlign: TextAlign.center, 
+              'Align QR code within the frame',
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w500)
             ),
           )

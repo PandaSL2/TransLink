@@ -22,8 +22,6 @@ void main() async {
     statusBarIconBrightness: Brightness.dark,
   ));
 
-  // Initialise WorkManager FIRST (before runApp).
-  // The workManagerCallback top-level function handles background schedule checks.
   await ScheduleWatchService.initialize();
 
   await SupabaseService.initialize();
@@ -34,8 +32,7 @@ void main() async {
 
     if (SupabaseService.currentSession == null) {
       debugPrint('⏳ [AUTH] No active session on startup. Checking storage...');
-      // We try to refresh, but we DON'T force a logout if it fails.
-      // This allows 'Anonymous' and 'Persistent' logins to stay active.
+
       await SupabaseService.recoverSession();
     }
     debugPrint('✅ [AUTH] Starting app for ${isLoggedIn ? "logged-in" : "setup"} user.');
@@ -57,7 +54,7 @@ class TransLinkDriverApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = Provider.of<SettingsProvider>(context);
-    
+
     return MaterialApp(
       title: 'TransLink Driver',
       debugShowCheckedModeBanner: false,
@@ -70,7 +67,7 @@ class TransLinkDriverApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       builder: (context, child) => Container(
-        color: const Color(0xFFF1F5F9), // Full-screen background
+        color: const Color(0xFFF1F5F9),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),

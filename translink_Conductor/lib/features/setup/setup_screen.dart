@@ -12,14 +12,11 @@ import '../../core/constants/driver_constants.dart';
 import '../../services/route_schedule_service.dart';
 import '../../services/schedule_watch_service.dart';
 import '../../services/supabase_service.dart';
-import '../../services/location_service.dart';
 import '../home/home_screen.dart';
 import '../../core/utils/app_localizations.dart';
 import '../../core/services/settings_provider.dart';
 import 'package:provider/provider.dart';
 
-/// One-time driver registration screen.
-/// Driver enters bus number + route ONCE. Data is saved locally and to Supabase.
 class SetupScreen extends StatefulWidget {
   const SetupScreen({super.key});
 
@@ -30,7 +27,7 @@ class SetupScreen extends StatefulWidget {
 class _SetupScreenState extends State<SetupScreen> {
   final _busCtrl   = TextEditingController();
   final _routeCtrl = TextEditingController();
-  String _selectedFleet = 'private'; // default
+  String _selectedFleet = 'private';
 
   RouteSchedule? _selectedSchedule;
   bool _isRegistering = false;
@@ -85,7 +82,7 @@ class _SetupScreenState extends State<SetupScreen> {
           return num.contains(q) || name.contains(q);
         }).toList();
       }
-      
+
       final schedule = RouteScheduleService.getSchedule(query);
       _selectedSchedule = schedule;
     });
@@ -105,13 +102,17 @@ class _SetupScreenState extends State<SetupScreen> {
       perm = await Geolocator.requestPermission();
     }
     if (perm == LocationPermission.deniedForever || perm == LocationPermission.denied) {
-      final l10n = AppLocalizations.of(context)!;
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context)!;
+
       _showDialog(l10n.translate('location_permission_required'),
           l10n.translate('location_permission_msg'));
       return false;
     }
     if (!await Geolocator.isLocationServiceEnabled()) {
-      final l10n = AppLocalizations.of(context)!;
+    if (!mounted) return false;
+    final l10n = AppLocalizations.of(context)!;
+
       _showDialog(l10n.translate('gps_is_off'), l10n.translate('gps_is_off_msg'));
       return false;
     }
@@ -119,7 +120,9 @@ class _SetupScreenState extends State<SetupScreen> {
     if (!kIsWeb) {
       final batteryStatus = await Permission.ignoreBatteryOptimizations.status;
       if (!batteryStatus.isGranted) {
+        if (!mounted) return false;
         final l10n = AppLocalizations.of(context)!;
+
         await showDialog(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -173,21 +176,18 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
 
-    // Immediate feedback: Vibrate and show loader
     HapticFeedback.mediumImpact();
     setState(() => _isRegistering = true);
 
-    // Request permissions but don't let it block indefinitely if already granted
     final granted = await _requestPermissions();
-    if (!granted) { 
-      if (mounted) setState(() => _isRegistering = false); 
-      return; 
+    if (!granted) {
+      if (mounted) setState(() => _isRegistering = false);
+      return;
     }
 
     final schedule = RouteScheduleService.getSchedule(routeNum);
     final prefs = await SharedPreferences.getInstance();
 
-    // Batch saves for performance
     await Future.wait([
       prefs.setBool(  DriverConstants.keyIsLoggedIn,     true),
       prefs.setString(DriverConstants.keyBusNumber,      busNum),
@@ -200,14 +200,13 @@ class _SetupScreenState extends State<SetupScreen> {
       prefs.setString(DriverConstants.keyFleetType,      _selectedFleet),
     ]);
 
-    // Register background tasks but DON'T start tracking yet (User must press Start manually)
     unawaited(ScheduleWatchService.registerPeriodicTask());
     await prefs.setBool(DriverConstants.keyIsTracking, false);
 
     if (mounted) {
-      // Satisfying transition
+
       Navigator.pushReplacement(
-        context, 
+        context,
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
@@ -248,7 +247,7 @@ class _SetupScreenState extends State<SetupScreen> {
                     Text(l10n.translate('one_time_reg'), style: GoogleFonts.inter(color: const Color(0xFF64748B), fontSize: 13)),
                   ]),
                 ),
-                // Language selector in setup screen
+
                 _buildLanguageSelector(),
               ]),
 
@@ -272,25 +271,25 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
 
               const SizedBox(height: 28),
-               
-               _label(l10n.translate('select_fleet') ?? 'Select Fleet'),
+
+               _label(l10n.translate('select_fleet')),
                const SizedBox(height: 12),
                Row(
                  children: [
                    Expanded(
                      child: _fleetCard(
-                       'ctb', 
-                       l10n.translate('ctb_label') ?? 'CTB', 
-                       Icons.account_balance_rounded, 
+                       'ctb',
+                       l10n.translate('ctb_label'),
+                       Icons.account_balance_rounded,
                        const Color(0xFFD32F2F),
                      ),
                    ),
                    const SizedBox(width: 16),
                    Expanded(
                      child: _fleetCard(
-                       'private', 
-                       l10n.translate('private_label') ?? 'Private', 
-                       Icons.directions_bus_rounded, 
+                       'private',
+                       l10n.translate('private_label'),
+                       Icons.directions_bus_rounded,
                        const Color(0xFF1976D2),
                      ),
                    ),
@@ -312,7 +311,7 @@ class _SetupScreenState extends State<SetupScreen> {
 
               _label(l10n.translate('route_label')),
               const SizedBox(height: 8),
-              
+
               TextField(
                 controller: _routeCtrl,
                 onChanged: _onSearchChanged,
@@ -321,7 +320,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF2563EB)),
                 ),
               ),
-              
+
               const SizedBox(height: 12),
 
               if (_isLoadingRoutes)
@@ -372,7 +371,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           Container(
                             width: 38, height: 38,
                             decoration: BoxDecoration(
-                              color: isSelected ? Colors.white.withOpacity(0.2) : const Color(0xFFEFF6FF),
+                              color: isSelected ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFEFF6FF),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Center(child: Text(
@@ -507,7 +506,7 @@ class _SetupScreenState extends State<SetupScreen> {
             width: 2,
           ),
           boxShadow: isSelected ? [
-            BoxShadow(color: color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 4))
+            BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))
           ] : null,
         ),
         child: Column(

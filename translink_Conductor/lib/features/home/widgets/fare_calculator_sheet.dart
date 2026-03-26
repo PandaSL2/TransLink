@@ -46,7 +46,7 @@ class _FareCalculatorSheetState extends State<FareCalculatorSheet> {
         children: [
           Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 24),
-          Text(l10n.translate('manual_entry_title') ?? 'Manual Fare Entry', style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(l10n.translate('manual_entry_title'), style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
@@ -84,7 +84,7 @@ class _FareCalculatorSheetState extends State<FareCalculatorSheet> {
                 padding: const EdgeInsets.symmetric(vertical: 18),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
-              child: Text(l10n.translate('collect_fare') ?? 'Collect Fare', style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
+              child: Text(l10n.translate('collect_fare'), style: GoogleFonts.inter(fontWeight: FontWeight.bold, fontSize: 18)),
             ),
           ),
         ],
@@ -98,9 +98,9 @@ class _FareCalculatorSheetState extends State<FareCalculatorSheet> {
       borderRadius: BorderRadius.circular(12),
       child: Container(
         decoration: BoxDecoration(
-          color: (color ?? const Color(0xFFF8FAFC)).withOpacity(0.1),
+          color: (color ?? const Color(0xFFF8FAFC)).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: (color ?? const Color(0xFFE2E8F0)).withOpacity(0.3)),
+          border: Border.all(color: (color ?? const Color(0xFFE2E8F0)).withValues(alpha: 0.3)),
         ),
         alignment: Alignment.center,
         child: Text(label, style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold, color: color ?? const Color(0xFF1E293B))),
