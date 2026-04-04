@@ -20,10 +20,9 @@ import 'providers/ride_provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.init();
-  
+
   debugPrint('Starting application. kIsWeb: $kIsWeb, platform: $defaultTargetPlatform');
 
-  // Initialize Supabase
   try {
     await Supabase.initialize(
       url: AppConstants.supabaseUrl,
@@ -33,7 +32,6 @@ void main() async {
     debugPrint('Supabase initialization failed: $e');
   }
 
-  // Initialize holiday service
   try {
     await HolidayService().init();
   } catch (e) {
@@ -81,9 +79,7 @@ class TransLinkApp extends StatelessWidget {
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 500),
-            // ── Age-based text scaling ─────────────────────────────
-            // Seniors (46-65) get 1.18x, adults (31-45) get 1.05x,
-            // young users (12-30) stay at 1.0x.
+
             child: MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: TextScaler.linear(settings.textScaleFactor),
@@ -109,7 +105,7 @@ class _AppRouterState extends State<_AppRouter> {
   bool _isLoading = true;
   bool _showOnboarding = false;
   bool _isLoggedIn = false;
-  bool _needsAgeSelection = false;  // true only on first-ever signup
+  bool _needsAgeSelection = false;
 
   @override
   void initState() {
@@ -118,7 +114,7 @@ class _AppRouterState extends State<_AppRouter> {
   }
 
   Future<void> _initApp() async {
-    // Request permissions upfront
+
     try {
       await [
         Permission.location,
@@ -128,12 +124,10 @@ class _AppRouterState extends State<_AppRouter> {
       debugPrint('Permission request failed: $e');
     }
 
-    // Check first time opening
     final prefs = await SharedPreferences.getInstance();
     final isFirstTime = prefs.getBool('is_first_time') ?? true;
     _showOnboarding = isFirstTime;
 
-    // Check existing session
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
       _isLoggedIn = true;
@@ -141,7 +135,6 @@ class _AppRouterState extends State<_AppRouter> {
 
     if (mounted) setState(() => _isLoading = false);
 
-    // Listen for auth state changes
     Supabase.instance.client.auth.onAuthStateChange.listen((state) {
       if (!mounted) return;
       switch (state.event) {
@@ -149,7 +142,7 @@ class _AppRouterState extends State<_AppRouter> {
           final settings = Provider.of<SettingsProvider>(context, listen: false);
           setState(() {
             _isLoggedIn = true;
-            // Show age selection if they haven't picked an age yet
+
             _needsAgeSelection = !settings.ageSelected;
           });
           break;

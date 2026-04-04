@@ -105,7 +105,7 @@ class RouteVariantModel {
 
   List<GeoPosition> get polylineCoords {
     if (polyline == null || polyline!.isEmpty) return [];
-    return []; 
+    return [];
   }
 
   factory RouteVariantModel.fromJson(Map<String, dynamic> json) => RouteVariantModel(
@@ -151,10 +151,10 @@ class ServiceProfileModel {
   final String id;
   final String routeId;
   final String profileName;
-  final String dayType; // weekday, weekend, holiday, all
-  final String serviceType; // fixed, interval, hybrid
-  final String? windowStart; // HH:mm
-  final String? windowEnd;   // HH:mm
+  final String dayType;
+  final String serviceType;
+  final String? windowStart;
+  final String? windowEnd;
   final int? intervalMinutes;
   final int delayFactorMinutes;
   final bool isActive;
@@ -192,7 +192,7 @@ class NearestBusStop {
   final double lng;
   final int walkingMeters;
   final int walkingMinutes;
-  final String? placeId; 
+  final String? placeId;
   final String? address;
   final List<GeoPosition> walkPolyline;
 
@@ -283,7 +283,7 @@ class FavouriteModel {
 }
 
 class LiveBusData {
-  final String busNumber; // Unique vehicle ID (PK)
+  final String busNumber;
   final double lat;
   final double lng;
   final double heading;
@@ -291,10 +291,10 @@ class LiveBusData {
   final String routeNumber;
   final String routeName;
   final DateTime lastUpdatedAt;
-  final String status; // 'active', 'delayed', etc.
+  final String status;
   final bool isActive;
-  final String crowdLevel; // 'low', 'medium', 'high', 'unknown'
-  final String fleetType; // 'private', 'ctb'
+  final String crowdLevel;
+  final String fleetType;
 
   LiveBusData({
     required this.busNumber,
@@ -364,9 +364,8 @@ class AiDiscoveredRoute {
   final int score;
   final List<BusRouteSegment> segments;
 
-  /// Dynamic Fare Estimator based on 2026 NTC bus fare rules
   double get estimatedFareLkr {
-    // If the route has no bus segments (walking only), the fare is 0.
+
     final hasBus = segments.any((s) => s.type == SegmentType.bus);
     if (!hasBus) return 0.0;
 
@@ -377,7 +376,6 @@ class AiDiscoveredRoute {
     );
   }
 
-  /// Combined polyline from all segments
   List<GeoPosition> get polyline => segments.expand((s) => s.polyline).toList();
 
   AiDiscoveredRoute({
@@ -398,7 +396,6 @@ class AiDiscoveredRoute {
     required this.segments,
   });
 
-  /// The destination position: last point of the very last segment's polyline.
   GeoPosition? get destPosition {
     if (segments.isEmpty) return null;
     for (int i = segments.length - 1; i >= 0; i--) {
@@ -409,12 +406,9 @@ class AiDiscoveredRoute {
     return null;
   }
 
-  /// Total walking distance in meters.
   int get walkingMeters => segments
       .where((s) => s.type == SegmentType.walking)
       .fold(0, (sum, s) => sum + s.distanceMeters);
-
-
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -513,7 +507,7 @@ class BusRouteSegment {
     } else if (hex.length == 8) {
       return Color(int.parse(hex, radix: 16));
     }
-    return const Color(0xFF2563EB); // Fallback blue
+    return const Color(0xFF2563EB);
   }
 
   factory BusRouteSegment.fromJson(Map<String, dynamic> json) => BusRouteSegment(
