@@ -8,7 +8,8 @@ import '../../core/services/places_service.dart';
 import '../../core/utils/app_localizations.dart';
 
 class PlaceSearchScreen extends StatefulWidget {
-  const PlaceSearchScreen({super.key});
+  final String? initialQuery;
+  const PlaceSearchScreen({super.key, this.initialQuery});
 
   @override
   State<PlaceSearchScreen> createState() => _PlaceSearchScreenState();
@@ -27,6 +28,11 @@ class _PlaceSearchScreenState extends State<PlaceSearchScreen> {
     super.initState();
     _loadRecentSearches();
     _loadSavedPlaces();
+    
+    if (widget.initialQuery != null) {
+      _searchCtrl.text = widget.initialQuery!;
+      _onSearchChanged(widget.initialQuery!);
+    }
   }
 
   Future<void> _loadRecentSearches() async {

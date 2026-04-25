@@ -15,6 +15,11 @@ class DirectionsService {
 
   final String _apiKey = AppConstants.googleMapsApiKey;
 
+  // Simple static cache for zero latency refresh
+  static List<NearestBusStop>? _cachedStops;
+  static double? _lastCacheLat;
+  static double? _lastCacheLng;
+
   // ─────────────────────────────────────────────────────────────────
   // FIND NEAREST BUS STOP
   // ─────────────────────────────────────────────────────────────────
@@ -61,13 +66,22 @@ class DirectionsService {
   }
 
   Future<List<NearestBusStop>> findNearbyBusStops(double userLat, double userLng) async {
+    // Check cache first (within 200m radius of last cache)
+    if (_cachedStops != null && _lastCacheLat != null && _lastCacheLng != null) {
+      final dist = MathUtils.haversineDistance(userLat, userLng, _lastCacheLat!, _lastCacheLng!);
+      if (dist < 200) {
+        debugPrint('🚌 Serving nearby stops from cache (dist: ${dist.toStringAsFixed(1)}m)');
+        return _cachedStops!;
+      }
+    }
+
     final uri = Uri.parse(
       '$_placesUrl?location=$userLat,$userLng&radius=2000&keyword=bus+stop&key=$_apiKey'
     );
 
     try {
       final resp = await http.get(uri).timeout(const Duration(seconds: 10));
-      if (resp.statusCode != 200) return [];
+      if (resp.statusCode != 200) return _cachedStops ?? [];
       final data = json.decode(resp.body) as Map<String, dynamic>;
       final results = data['results'] as List<dynamic>? ?? [];
 
@@ -87,10 +101,14 @@ class DirectionsService {
       }
       
       stops.sort((a, b) => a.walkingMeters.compareTo(b.walkingMeters));
-      return stops.take(10).toList();
+      _cachedStops = stops.take(10).toList();
+      _lastCacheLat = userLat;
+      _lastCacheLng = userLng;
+      
+      return _cachedStops!;
     } catch (e) {
       debugPrint('🚌 findNearbyBusStops error: $e');
-      return [];
+      return _cachedStops ?? [];
     }
   }
 
