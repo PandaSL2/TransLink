@@ -1,29 +1,34 @@
 # Translink: Future Implementation Roadmap
 
-This document outlines the strategic evolution and technical enhancements planned for the Translink ecosystem. These features aim to further digitize the Sri Lankan public transport sector, improving efficiency, transparency, and user convenience.
+This document outlines the strategic evolution and technical enhancements planned for the Translink ecosystem. Following the successful deployment of **v4.0 (Mixed Fleet & Intercity Express Edition)**, the roadmap focuses on deep hardware integration and predictive analytics to modernize Sri Lanka's transport backbone.
 
 ---
 
-## 1. Hardware Integration: Z300 series Smart POS Terminal
-- **NFC & Contactless Payments**: Integration with the **Z300 Android Smart POS Terminal** to support "Tap-to-Pay" using debit/credit cards and NFC-enabled transport cards.
-- **Physical Receipt Printing**: On-board thermal printing for passengers who pay in cash, ensuring all transactions are recorded in the central Supabase backend.
-- **Ruggedized Conductor Experience**: Deploying industrial-grade Z300 handhelds to replace personal smartphones, providing better durability and specialized scanning hardware (laser scanners) for high-speed QR verification.
+## 1. Recently Deployed Milestones (v4.0)
+- **Mixed Fleet Synchronization**: Seamless tracking and management of both **Private** and **CTB (State)** buses with dynamic color-coded mapping (Red for CTB, Blue for Private).
+- **Intercity Express Optimization**: Targeted UI for long-distance routes with real-time fare estimates and boarding proximity alerts.
+- **Natural Language Localization**: Full support for English, Sinhala, and Tamil with voice-enabled search for hands-free destination entry.
+- **Low-Bandwidth "Butter Smooth" UI**: Optimized caching and marker management for reliable performance even on 3G/Low-data networks.
 
-## 2. Advanced AI & Prediction Models
-- **AI-Driven Demand Forecasting**: Utilizing machine learning to analyze historical ridership data and predict peak hour congestion. This allows bus operators to deploy additional vehicles only when needed.
-- **Dynamic Route Optimization**: Real-time traffic analysis (via Google Maps Traffic API) to suggest alternative corridors to conductors when major delays occur on standard routes.
-- **Fuel Efficiency Analytics**: Monitoring driver performance and bus speed to provide insights on fuel consumption patterns and maintenance requirements.
+## 2. Hardware & IoT Integration
+- **Z300 Series Smart POS Terminals**: Deployment of ruggedized Android handhelds for conductors to support NFC "Tap-to-Pay" and thermal receipt printing.
+- **On-Board IoT Occupancy Sensors**: IR sensors to provide real-time "Crowd Levels" (Seat availability) to the passenger app, allowing commuters to choose less crowded buses.
+- **GPS-Locked Dashcams**: Automatic incident reporting and route violation detection to ensure buses stick to scheduled corridors.
 
-## 3. Financial & Ecosystem Expansion
-- **Multi-Bank Wallet Integration**: Allowing users to top up their Translink Wallet directly via any local bank (BOC, Sampath, HNB) or mobile wallets (Frimi, iPay).
-- **Automated Subsidy Management**: Digital verification for student and senior citizen discounts using national ID integration, removing the need for physical permit checks.
-- **Inter-city Seat Reservation**: Expanding from suburban transit into long-distance (Highway) seat booking with reserved seating charts.
+## 3. AI & Advanced Prediction Models
+- **Predictive Arrival Intelligence**: Machine learning models that analyze monsoon patterns, Poya holiday traffic, and historical data to provide "Ghost Bus" detection and ultra-accurate ETAs.
+- **Dynamic Demand Balancing**: AI suggestions for operators to deploy additional "Intercity Express" vehicles during sudden surges in passenger demand at major hubs like Makumbura.
+- **Automated Subsidy Verification**: Digital QR-based verification for student and senior citizen discounts via National ID integration.
 
-## 4. Enhanced Commuter Experience
-- **Offline Mode Support**: Implementation of local database caching to allow ticket generation and basic route viewing even in areas with zero mobile data coverage.
-- **AR Navigation**: Augmented Reality overlays at major bus stands (like Pettah or Makumbura) to help tourists and new commuters find the exact bay where their bus is parked.
-- **Smart Notifications**: "Time to Leave" alerts based on the real-time location of the user's favorite bus and their current walking distance to the stop.
+## 4. Financial & Ecosystem Expansion
+- **LankaPay & Multi-Bank Integration**: Direct wallet top-ups from any local bank (BOC, Sampath, HNB) and integration with the national payment switch.
+- **Inter-city Seat Reservation**: Advanced seat booking engine for Highway Express routes, allowing users to pick specific seats and pay in advance.
+- **Corporate Commuter Portals**: Specialized dashboards for companies to manage transport allowances for employees using the Translink ecosystem.
+
+## 5. Enhanced Commuter Experience
+- **AR Navigation at Hubs**: Augmented Reality overlays to guide commuters to the correct bay at complex terminals like Pettah or Kandy Goods Shed.
+- **Offline Ticket Generation**: Secure local database caching for fare collection in zero-coverage areas (e.g., central highlands).
 
 ---
-**Prepared for Project Viva 2026**
-*Confidential - Translink Technical Division*
+**Prepared for Final Project Submission 2026**  
+*Strategic Vision - Translink Development Team*

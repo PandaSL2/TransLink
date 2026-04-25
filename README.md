@@ -1,4 +1,4 @@
-# 🚌 TransLink – Unified Transit Ecosystem (NTC 2026 Compatible)
+# 🚌 TransLink – Unified Transit Ecosystem (Mixed Fleet Edition)
 
 ## 1. Project Vision
 TransLink is a state-of-the-art, location-aware public transport and digital payment platform designed for the Sri Lankan transportation sector. By integrating **Google Maps SDK** and **Supabase Realtime**, TransLink eliminates the need for manual dispatch dashboards, providing a seamless, automated experience for both commuters and transport operators.
@@ -15,18 +15,24 @@ The ecosystem is comprised of two core mobile applications and a serverless back
 
 ---
 
-## 3. Latest Feature Updates (V2.5)
+## 3. Latest Feature Updates (V4.0)
 
-### 🗺️ **Dynamic Map Intelligence (Passenger)**
-The Passenger App now features **Context-Aware Marker Filtering**. 
-- **Exploration Mode**: Shows all active buses in the city on startup to highlight system activity.
-- **Search Focus**: When a user searches for a destination (e.g., *"Kottawa"*), the map automatically hides irrelevant bus markers, showing only those routes that serve the user's intended journey.
-- **Auto-Reset**: Markers instantly restore when a search is cleared.
+### 🔴🔵 **Mixed Fleet Synchronization**
+The ecosystem now supports full tracking of both **Private** and **CTB (State)** buses.
+- **Dynamic Mapping**: CTB buses appear in **Red** markers, while Private buses appear in **Blue**.
+- **Fleet Selection**: Conductor app allows drivers to register as CTB or Private, dynamically updating their broadcast identity.
 
-### 📶 **Resilient Error Handling (Conductor)**
-To handle network variability in transit, the Conductor Assistant now features **Expert Error Translation**.
-- **Localized Alerts**: Cryptic technical exceptions (like `SocketException`) are automatically translated into user-friendly alerts in **English, Sinhalese, and Tamil**.
-- **User-Centric**: Drivers see "No internet connection" instead of code errors, ensuring they know exactly how to resolve connectivity issues.
+### 🎤 **Voice-Activated Search & Accessibility**
+- **Natural Language Input**: Commuters can now use the voice icon to speak their destination, which is automatically parsed for trip planning.
+- **Multi-lingual Support**: Full localized UI in **English, Sinhala, and Tamil** with zero hardcoded strings.
+
+### ⚡ **Low-Latency Intelligence**
+- **Butter-Smooth UI**: Optimized caching for "Nearby Stops" ensures instant display with zero API latency.
+- **Bandwidth Optimization**: Marker management and data syncing are optimized for low-bandwidth 3G networks.
+
+### 🛣️ **Intercity Express Experience**
+- **Long-Range Focus**: Specialized UI for Intercity Express routes with accurate fare estimates and boarding proximity alerts.
+- **Favorites Integration**: Real-time "Add to Favorites" for frequent routes.
 
 ---
 
@@ -48,10 +54,10 @@ To update credentials, modify these specific constants:
 ## 5. Build & Deployment
 The project is stabilized for production release.
 
-### 📦 **Final Release APKs**
+### 📦 **Final Release APKs (V4.0)**
 Located in the **`build/apks/`** directory:
-- `translink_passenger.apk`: The premium commuter experience.
-- `translink_conductor.apk`: The specialized assistant for drivers/conductors.
+- `translink_passenger_v4.apk`: The premium commuter experience with mixed fleet support.
+- `translink_conductor_v4.apk`: The specialized assistant with fleet registration.
 
 
 
