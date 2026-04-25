@@ -37,15 +37,15 @@ The ecosystem now supports full tracking of both **Private** and **CTB (State)**
 ---
 
 ## 4. Technical Stack & Configuration
-| Layer               | Technology |
+| Layer                 | Technology |
 
-| **Front-end** |     Flutter (Dart) |
+| **Front-end**   |     Flutter (Dart) |
 
-| **Backend** |       Supabase (PostgreSQL / GraphQL / Realtime) 
+| **Backend**   |       Supabase (PostgreSQL / GraphQL / Realtime) 
 
-| **Maps & Routing** | Google Maps SDK & Google Directions API |
+| **Maps & Routing**   | Google Maps SDK & Google Directions API |
 
-| **Payments** |      Secure QR Code (HMAC-based) |
+| **Payments**   |      Secure QR Code (HMAC-based) |
 
 ### 🛠️ **Supabase Integration**
 To update credentials, modify these specific constants:
