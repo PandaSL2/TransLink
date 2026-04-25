@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="TransLink – Location-Aware Predictive Public Transport System (Sri Lanka)">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="TransLink">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <title>TransLink</title>
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Google Maps JavaScript API (Modern Loader) -->
+  <script>
+    (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t.toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.googleapis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Better to help :)"):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+      key: "AIzaSyAATZ7kf3YGkWbLMqkBz1aOQ-uytSe8ZlI",
+      v: "beta",
+      libraries: ["places", "marker"]
+    });
+  </script>
+  <script>
+    // ── Global State ──────────────────────────────────────────
+    window._gmapInstance = null;
+    window._userMarker = null;
+    window._destMarker = null;
+    window._busMarkers = [];
+    window._routePolyline = null;
+    window._walkingPolyline = null;
+    window._autocompleteService = null;
+    window._autocompleteToken = null;
+
+    // ── Init ─────────────────────────────────────────────────
+    window.initGmapsWeb = async function (containerId, lng, lat, zoom) {
+      console.log('[Map] Initializing with center:', lat, lng);
+      try {
+        const { Map } = await google.maps.importLibrary("maps");
+        window._gmapInstance = new Map(document.getElementById(containerId), {
+          center: { lat: lat, lng: lng },
+          zoom: zoom,
+          mapId: 'DEMO_MAP_ID',
+          mapTypeControl: false,
+          fullscreenControl: false,
+          streetViewControl: false,
+          zoomControl: false
+        });
+        console.log('[Map] Instance ready');
+      } catch (e) {
+        console.error('[Map] Init failed', e);
+      }
+    };
+
+    // ── Navigation ────────────────────────────────────────────
+    window.gmapsFlyTo = function (lng, lat, zoom) {
+      if (!window._gmapInstance) return;
+      window._gmapInstance.setCenter({ lat: lat, lng: lng });
+      window._gmapInstance.setZoom(zoom);
+    };
+
+    // ── Interaction ───────────────────────────────────────────
+    window.gmapsSetInteraction = function (enabled) {
+      if (!window._gmapInstance) return;
+      const container = document.getElementById('gmaps-web-container');
+      if (container) container.style.pointerEvents = enabled ? 'auto' : 'none';
+      window._gmapInstance.setOptions({
+        draggable: enabled,
+        scrollwheel: enabled,
+        disableDoubleClickZoom: !enabled,
+        gestureHandling: enabled ? 'greedy' : 'none',
+      });
+    };
+
+    // ── Markers ───────────────────────────────────────────────
+    window.gmapsUpdateMarkers = async function (userLng, userLat, busesJson, destLng, destLat) {
+      if (!window._gmapInstance) return;
+      try {
+        const { AdvancedMarkerElement, PinElement } = await google.maps.importLibrary("marker");
+        
+        // User
+        if (userLng && userLat) {
+          console.log('[Markers] Updating user marker:', userLat, userLng);
+          const pos = { lat: userLat, lng: userLng };
+          if (!window._userMarker) {
+            window._userMarker = new AdvancedMarkerElement({
+              position: pos, map: window._gmapInstance, zIndex: 10,
+              content: new PinElement({ background: '#2563EB', borderColor: '#ffffff', glyphColor: '#ffffff', scale: 0.8 })
+            });
+          } else { window._userMarker.position = pos; }
+        }
+
+        // Destination
+        if (destLng && destLat) {
+          console.log('[Markers] Updating destination marker:', destLat, destLng);
+          const pos = { lat: destLat, lng: destLng };
+          if (!window._destMarker) {
+            window._destMarker = new AdvancedMarkerElement({
+              position: pos, map: window._gmapInstance, zIndex: 9,
+              content: new PinElement({ background: '#EF4444', borderColor: '#ffffff', glyphColor: '#ffffff' })
+            });
+          } else { window._destMarker.position = pos; }
+        } else if (window._destMarker) {
+          window._destMarker.map = null;
+          window._destMarker = null;
+        }
+
+        // Buses
+        const buses = busesJson ? JSON.parse(busesJson) : [];
+        window._busMarkers.forEach(m => m.map = null);
+        window._busMarkers = []; // Clear existing markers
+        // Update Bus Markers with sharp arrowhead
+        buses.forEach(bus => {
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.setAttribute('viewBox', '0 0 24 24');
+          svg.style.width = '28px'; svg.style.height = '28px';
+          svg.style.transform = `rotate(${bus.heading || 0}deg)`;
+          
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          // Sharp modern navigation arrowhead
+          path.setAttribute('d', 'M12 2L4.5 20.29L5.21 21L12 18L18.79 21L19.5 20.29L12 2Z');
+          path.setAttribute('fill', '#10B981'); // Primary Green
+          path.setAttribute('stroke', 'white');
+          path.setAttribute('stroke-width', '1.5');
+          svg.appendChild(path);
+
+          const marker = new AdvancedMarkerElement({
+            map: window._gmapInstance,
+            position: { lat: bus.lat, lng: bus.lng },
+            content: svg,
+            title: `Bus ${bus.routeNumber}`
+          });
+          window._busMarkers.push(marker);
+        });
+      } catch (e) { console.error('[Markers] Update failed', e); }
+    };
+
+    // ── Polylines ─────────────────────────────────────────────
+    window.gmapsUpdateLines = async function (polylineJson, color, walkingJson) {
+      if (!window._gmapInstance) return;
+      try {
+        const { Polyline } = await google.maps.importLibrary("maps");
+        const poly = polylineJson ? JSON.parse(polylineJson) : [];
+        const walking = walkingJson ? JSON.parse(walkingJson) : [];
+
+        if (window._routePolyline) window._routePolyline.setMap(null);
+        if (poly.length > 0) {
+          window._routePolyline = new Polyline({
+            path: poly.map(p => ({ lat: p[1], lng: p[0] })),
+            geodesic: true, strokeColor: color || '#2563EB', strokeOpacity: 0.85, strokeWeight: 5, map: window._gmapInstance
+          });
+        }
+
+        if (window._walkingPolyline) window._walkingPolyline.setMap(null);
+        if (walking.length > 0) {
+          window._walkingPolyline = new Polyline({
+            path: walking.map(p => ({ lat: p[1], lng: p[0] })),
+            geodesic: true,
+            strokeOpacity: 0, 
+            strokeWeight: 4,
+            map: window._gmapInstance,
+            icons: [{
+              icon: {
+                path: 'M 0,-1 0,1',
+                strokeOpacity: 1,
+                strokeColor: '#64748B', // Slate grey for distinct look
+                scale: 3
+              },
+              offset: '0',
+              repeat: '15px'
+            }]
+          });
+        }
+      } catch (e) { console.error('[Lines] Update failed', e); }
+    };
+
+    // ── Search Bridge ─────────────────────────────────────────
+    window.gmapsAutocompleteAsync = async function(input) {
+      console.log('[Search] Request:', input);
+      try {
+        const { AutocompleteService, AutocompleteSessionToken } = await google.maps.importLibrary("places");
+        if (!window._autocompleteService) window._autocompleteService = new AutocompleteService();
+        if (!window._autocompleteToken) window._autocompleteToken = new AutocompleteSessionToken();
+
+        return new Promise((resolve) => {
+          window._autocompleteService.getPlacePredictions({
+            input: input,
+            sessionToken: window._autocompleteToken,
+            componentRestrictions: { country: 'lk' }
+          }, (preds, status) => {
+            if (status === 'OK' && preds) {
+              resolve(JSON.stringify(preds.map(p => ({
+                main: p.structured_formatting?.main_text || p.description?.split(',')[0] || '',
+                secondary: p.structured_formatting?.secondary_text || '',
+                full: p.description || '',
+                placeId: p.place_id || ''
+              }))));
+            } else { resolve('[]'); }
+          });
+        });
+      } catch (e) { console.error('[Search] Error:', e); return '[]'; }
+    };
+
+    window.gmapsGetPlaceDetails = async function(placeId) {
+      try {
+        const { PlacesService } = await google.maps.importLibrary("places");
+        const service = new PlacesService(document.createElement('div'));
+        return new Promise((resolve) => {
+          service.getDetails({ placeId, fields: ['geometry'] }, (result, status) => {
+            if (status === 'OK' && result?.geometry?.location) {
+              resolve(JSON.stringify({ lat: result.geometry.location.lat(), lng: result.geometry.location.lng() }));
+            } else { resolve(null); }
+          });
+        });
+      } catch (e) { return null; }
+    };
+
+    console.log('[Bridge] Initialization complete. Methods:', 
+                Object.keys(window).filter(k => k.startsWith('gmaps') || k === 'initGmapsWeb'));
+  </script>
+  <style>
+    html {
+      background-color: #F8FAFC;
+    }
+
+    body {
+      background-color: #F8FAFC;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    flutter-view {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+
+<body>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>
