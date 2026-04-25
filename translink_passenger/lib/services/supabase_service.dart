@@ -202,6 +202,7 @@ class SupabaseService {
                   status: json['status'] ?? 'on_time',
                   isActive: !isStale,
                   crowdLevel: 'unknown',
+                  fleetType: json['fleet_type'] ?? 'private',
                 );
               })
               .where((bus) => bus.isActive && bus.lat != 0.0 && bus.lng != 0.0)

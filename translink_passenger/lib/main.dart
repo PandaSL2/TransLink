@@ -3,9 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
-import 'features/auth/get_started_screen.dart';
 import 'features/auth/login_screen.dart';
 import 'services/holiday_service.dart';
 import 'core/services/settings_provider.dart';
@@ -92,7 +92,6 @@ class TransLinkApp extends StatelessWidget {
   }
 }
 
-
 class _AppRouter extends StatefulWidget {
   const _AppRouter();
 
@@ -103,7 +102,6 @@ class _AppRouter extends StatefulWidget {
 class _AppRouterState extends State<_AppRouter> {
   bool _isLoading = true;
   bool _showOnboarding = false;
-  bool _showGetStarted = true;
   bool _isLoggedIn = false;
 
   @override
@@ -113,6 +111,16 @@ class _AppRouterState extends State<_AppRouter> {
   }
 
   Future<void> _initApp() async {
+    // Request permissions upfront
+    try {
+      await [
+        Permission.location,
+        Permission.notification,
+      ].request();
+    } catch (e) {
+      debugPrint('Permission request failed: $e');
+    }
+
     // Check first time opening
     final prefs = await SharedPreferences.getInstance();
     final isFirstTime = prefs.getBool('is_first_time') ?? true;
@@ -121,7 +129,6 @@ class _AppRouterState extends State<_AppRouter> {
     // Check existing session
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
-      _showGetStarted = false;
       _isLoggedIn = true;
     }
 
@@ -132,10 +139,10 @@ class _AppRouterState extends State<_AppRouter> {
       if (!mounted) return;
       switch (state.event) {
         case AuthChangeEvent.signedIn:
-          setState(() { _isLoggedIn = true; _showGetStarted = false; });
+          setState(() { _isLoggedIn = true; });
           break;
         case AuthChangeEvent.signedOut:
-          setState(() { _isLoggedIn = false; _showGetStarted = true; });
+          setState(() { _isLoggedIn = false; });
           break;
         default:
           break;
@@ -160,12 +167,6 @@ class _AppRouterState extends State<_AppRouter> {
     
     if (_isLoggedIn) {
       return const MainShell();
-    }
-    
-    if (_showGetStarted) {
-      return GetStartedScreen(
-        onGetStarted: () => setState(() => _showGetStarted = false),
-      );
     }
     
     return LoginScreen(

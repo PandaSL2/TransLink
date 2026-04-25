@@ -8,6 +8,10 @@ class AppColors {
   static const Color secondary = Color(0xFFD97706);    // Amber Gold
   static const Color accent = Color(0xFF10B981);       // Emerald Green (Success)
   
+  // Fleet Branding
+  static const Color ctbRed = Color(0xFFD32F2F);       // Sri Lanka CTB Red
+  static const Color privateBlue = Color(0xFF1976D2);  // Private Bus Blue
+  
   // Light Mode Core - Slate/Cloud Palette (Fixes Washout)
   static const Color backgroundLight = Color(0xFFF1F5F9);   // Slate 100 (Deeper than 50)
   static const Color surfaceLight = Color(0xFFFFFFFF);

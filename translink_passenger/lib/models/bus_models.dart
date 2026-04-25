@@ -294,6 +294,7 @@ class LiveBusData {
   final String status; // 'active', 'delayed', etc.
   final bool isActive;
   final String crowdLevel; // 'low', 'medium', 'high', 'unknown'
+  final String fleetType; // 'private', 'ctb'
 
   LiveBusData({
     required this.busNumber,
@@ -307,7 +308,23 @@ class LiveBusData {
     this.status = 'active',
     this.isActive = true,
     this.crowdLevel = 'unknown',
+    this.fleetType = 'private',
   });
+
+  factory LiveBusData.fromJson(Map<String, dynamic> json) => LiveBusData(
+    busNumber:      json['bus_number'] ?? '',
+    lat:            (json['latitude']  as num?)?.toDouble() ?? 0.0,
+    lng:            (json['longitude'] as num?)?.toDouble() ?? 0.0,
+    heading:        (json['heading']   as num?)?.toDouble() ?? 0.0,
+    speedKmph:      ((json['speed']     as num?)?.toDouble() ?? 0.0) * 3.6,
+    routeNumber:    json['route_number'] ?? '',
+    routeName:      json['route_name']   ?? '',
+    lastUpdatedAt: DateTime.tryParse(json['last_updated_at'] ?? '') ?? DateTime.now(),
+    status:         json['status'] ?? 'active',
+    isActive:       true,
+    crowdLevel:     json['crowd_level'] ?? 'unknown',
+    fleetType:      json['fleet_type']  ?? 'private',
+  );
 }
 
 class BusLocationEstimate {
