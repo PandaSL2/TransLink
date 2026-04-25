@@ -11,6 +11,7 @@ class DriverConstants {
   static const String keyIsTracking       = 'is_tracking';
   static const String keyLastShiftCheck   = 'last_shift_check';
   static const String keyIsLoggedIn       = 'is_logged_in'; // true after first-time setup
+  static const String keyFleetType        = 'fleet_type';   // 'private' or 'ctb'
 
   // Schedule keys (populated from RouteScheduleService on setup)
   static const String keyHeadwayMinutes   = 'headway_minutes';

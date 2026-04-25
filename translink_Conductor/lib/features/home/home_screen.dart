@@ -510,6 +510,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return l10n.translate('login_required'); // Fallback to localized re-auth msg
     }
 
+    if (msg.contains('fleet_type')) {
+      return 'System Update Required: Please add the fleet_type column to Supabase.';
+    }
+
+    if (msg.contains('pgrst204')) {
+      return 'System Outdated: Database structure needs update.';
+    }
+
     return error.toString();
   }
 
