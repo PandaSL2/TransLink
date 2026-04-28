@@ -4,6 +4,18 @@
 [![Platform](https://img.shields.io/badge/Platform-Flutter%20%7C%20Dart-blue.svg)]()
 [![Backend](https://img.shields.io/badge/Backend-Supabase%20%7C%20PostgreSQL-green.svg)]()
 
+> [!IMPORTANT]
+> **Academic Marker's Guide (COMP3000/SEC300)**
+> This source code package has been "Cleaned" for submission. All temporary build artifacts and hidden IDE/VCS files should be excluded from the final ZIP.
+> 
+> **Quick Start for Markers:**
+> 1. **Setup**: Ensure Flutter (Stable) is installed and configured in your environment.
+> 2. **Dependencies**: Run `flutter pub get` inside both `/translink_passenger` and `/translink_Conductor` directories.
+> 3. **Run**: Use `flutter run` or open the directories in VS Code/Android Studio.
+> 4. **Pre-built Demo**: If you do not wish to build from source, final APKs are provided in the `/releases` directory.
+
+---
+
 ## 1. Project Vision
 TransLink is a state-of-the-art, location-aware public transport and digital payment ecosystem designed for the Sri Lankan transportation sector. By deeply integrating **Google Maps SDK** and **Supabase Realtime**, TransLink eliminates the need for manual dispatch dashboards, providing a seamless, automated, and localized experience for both commuters and transport operators.
 
@@ -61,9 +73,10 @@ To update credentials or connect to a new database environment, modify these spe
 The project is stabilized and optimized for production release.
 
 ### 📦 **Final Release APKs (V4.0)**
-Pre-compiled artifacts are located in the **`build/apks/`** directory:
+Pre-compiled artifacts are located in the **`/releases`** directory:
 - `translink_passenger_v4.apk`: The premium commuter experience with live tracking and smart wallets.
 - `translink_conductor_v4.apk`: The specialized assistant with live revenue dashboards and QR scanning.
 
 ---
 *Built for the future of smart transit in Sri Lanka.*
+
