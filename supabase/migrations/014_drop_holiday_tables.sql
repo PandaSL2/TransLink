@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS holiday_schedule_profiles CASCADE;
+DROP TABLE IF EXISTS holidays CASCADE;
