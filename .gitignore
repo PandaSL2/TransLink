@@ -43,3 +43,6 @@ DerivedData/
 
 # Supabase
 supabase/.temp/
+
+# Local reference artifacts
+removed_tables_audit.md
