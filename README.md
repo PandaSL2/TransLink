@@ -41,9 +41,9 @@ graph TD
     Passenger -->|1. Authenticate / JWT| Auth
     Conductor -->|1. Authenticate / JWT| Auth
     
-    Conductor -->|2. Upsert GPS Status <br/> (5s Interval Background)| DB
+    Conductor -->|2. Upsert GPS Status <br/> 5s Interval Background| DB
     DB -->|3. Trigger Event / WAL| Realtime
-    Realtime -.->|4. Stream Live Location <br/> (WS Low-Latency)| Passenger
+    Realtime -.->|4. Stream Live Location <br/> WS Low-Latency| Passenger
     
     Passenger -->|5. Read Routes / Stops| DB
     Passenger -->|6. Geolocation & Routing| Gmaps
@@ -51,7 +51,7 @@ graph TD
     Passenger -->|8. Fetch LK Holidays| HolidayAPI
 
     Passenger -->|9. Present QR Ticket| Conductor
-    Conductor -->|10. Scan QR & Trigger RPC <br/> (handle_payment)| RPC
+    Conductor -->|10. Scan QR & Trigger RPC <br/> via handle_payment RPC| RPC
     RPC -->|11. ACID Wallet Transaction| DB
     DB -->|12. Stream Revenue Updates| Conductor
     
