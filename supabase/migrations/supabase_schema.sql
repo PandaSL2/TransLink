@@ -292,14 +292,6 @@ CREATE TRIGGER on_auth_user_created
     AFTER INSERT ON auth.users
     FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
-CREATE TABLE IF NOT EXISTS holidays (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    holiday_date DATE UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    country_code TEXT DEFAULT 'LK',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS favourites (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -309,11 +301,8 @@ CREATE TABLE IF NOT EXISTS favourites (
     UNIQUE(user_id, route_id)
 );
 
-ALTER TABLE holidays ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favourites ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Public read holidays" ON holidays;
-CREATE POLICY "Public read holidays" ON holidays FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users manage favourites" ON favourites;
 CREATE POLICY "Users manage favourites" ON favourites FOR ALL USING (auth.uid() = user_id);
 

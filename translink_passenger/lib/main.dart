@@ -7,7 +7,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'core/theme/app_theme.dart';
 import 'core/constants/app_constants.dart';
 import 'features/auth/login_screen.dart';
-import 'services/holiday_service.dart';
 import 'core/services/settings_provider.dart';
 import 'core/utils/app_localizations.dart';
 import 'features/onboarding/onboarding_screen.dart';
@@ -30,12 +29,6 @@ void main() async {
     );
   } catch (e) {
     debugPrint('Supabase initialization failed: $e');
-  }
-
-  try {
-    await HolidayService().init();
-  } catch (e) {
-    debugPrint('Holiday service initialization failed: $e');
   }
 
   runApp(

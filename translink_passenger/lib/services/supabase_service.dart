@@ -94,20 +94,6 @@ class SupabaseService {
   }
 
 
-  static Future<bool> isHoliday(DateTime date) async {
-    final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    final res = await client
-        .from('holidays')
-        .select('id')
-        .eq('holiday_date', dateStr)
-        .limit(1);
-    return (res as List).isNotEmpty;
-  }
-
-  static Future<void> upsertHolidays(List<Map<String, dynamic>> holidays) async {
-    await client.from('holidays').upsert(holidays, onConflict: 'holiday_date');
-  }
-
   static Future<List<FavouriteModel>> getFavourites() async {
     final uid = currentUser?.id;
     if (uid == null) return [];

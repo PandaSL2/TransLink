@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../models/bus_models.dart';
 import '../../services/supabase_service.dart';
 import '../../services/timetable_service.dart';
-import '../../services/holiday_service.dart';
 import '../../core/utils/app_localizations.dart';
 
 class BusStopScreen extends StatefulWidget {
@@ -28,7 +27,7 @@ class _BusStopScreenState extends State<BusStopScreen> {
   Future<void> _loadArrivals() async {
     try {
       final now = DateTime.now();
-      final isHoliday = HolidayService().isHoliday(now);
+      const isHoliday = false;
       final dayType = TimetableService.getDayType(now, isHoliday: isHoliday);
 
       final routes = await SupabaseService.getActiveRoutes();

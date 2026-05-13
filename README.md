@@ -34,7 +34,6 @@ graph TD
     subgraph External_APIs [External Cloud Services]
         Gmaps["🗺️ Google Maps SDK <br/>& Directions API"]
         Groq["🧠 Groq AI API <br/>(Llama 3.1-8B-Instant)"]
-        HolidayAPI["📅 Nager.Date API <br/>(LK Holidays)"]
     end
 
     %% Interactions
@@ -48,7 +47,6 @@ graph TD
     Passenger -->|5. Read Routes / Stops| DB
     Passenger -->|6. Geolocation & Routing| Gmaps
     Passenger -->|7. NLP Search / Voice Chat| Groq
-    Passenger -->|8. Fetch LK Holidays| HolidayAPI
 
     Passenger -->|9. Present QR Ticket| Conductor
     Conductor -->|10. Scan QR & Trigger RPC <br/> via handle_payment RPC| RPC
@@ -60,7 +58,7 @@ graph TD
     classDef external fill:#FEF3C7,stroke:#D97706,stroke-width:2px;
     class Passenger,Conductor client;
     class Auth,Realtime,DB,RPC backend;
-    class Gmaps,Groq,HolidayAPI external;
+    class Gmaps,Groq external;
 ```
 
 ---
@@ -194,14 +192,6 @@ erDiagram
         uuid user_id FK
         uuid route_id FK
         text label
-        timestamp created_at
-    }
-
-    holidays {
-        uuid id PK
-        date holiday_date UK
-        text name
-        text country_code
         timestamp created_at
     }
 ```
