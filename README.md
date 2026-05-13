@@ -313,15 +313,4 @@ flutter pub get
 flutter run
 ```
 
----
-
-## 🎓 Viva Presentation Handbook
-
-This section is dedicated to helping you defend your project with confidence, showcasing the engineering depth and architectural decisions that make TransLink stand out.
-
-### 🏛️ Key Architectural Highlights
-*   **Why Supabase instead of Firebase Realtime?**
-    *   *Relational Integrity*: Firebase uses flat JSON structures which lead to data duplication and lack ACID compliance for monetary transactions. Supabase utilizes a full **PostgreSQL** relational engine. This allows complex joins (e.g., matching passenger ID, bus number, and calculating routes), database triggers (for user profile generation), and exact monetary precision (`NUMERIC(10,2)`).
-    *   *Postgres Realtime*: Rather than writing expensive query listeners, we leverage Postgres Write-Ahead Logs (WAL) via websockets to stream coordinates only when rows mutate.
-*   **Preventing Race Conditions**: Payment processing is kept out of client devices. All financial transactions are wrapped in a single database Remote Procedure Call (`handle_payment`), ensuring that wallet balance checks and transaction records occur atomically under high isolation levels.
 
