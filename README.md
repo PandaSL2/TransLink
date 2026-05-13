@@ -73,7 +73,6 @@ The PostgreSQL database is highly structured with primary-foreign key integrity 
 erDiagram
     routes ||--o{ route_variants : "has"
     routes ||--o{ service_profiles : "schedules"
-    routes ||--o{ holiday_schedule_profiles : "holiday schedules"
     routes ||--o{ favourites : "starred by"
     
     route_variants ||--o{ route_stop_sequences : "contains"
@@ -203,17 +202,6 @@ erDiagram
         date holiday_date UK
         text name
         text country_code
-        timestamp created_at
-    }
-
-    holiday_schedule_profiles {
-        uuid id PK
-        uuid route_id FK
-        text profile_name
-        integer interval_minutes
-        time window_start
-        time window_end
-        boolean is_active
         timestamp created_at
     }
 ```

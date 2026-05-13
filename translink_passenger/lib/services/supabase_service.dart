@@ -93,17 +93,6 @@ class SupabaseService {
     return (res as List).map((e) => FixedDepartureModel.fromJson(e)).toList();
   }
 
-  static Future<List<HolidayScheduleProfileModel>> getHolidayProfiles(
-      String routeId) async {
-    final res = await client
-        .from('holiday_schedule_profiles')
-        .select()
-        .eq('route_id', routeId)
-        .eq('is_active', true);
-    return (res as List)
-        .map((e) => HolidayScheduleProfileModel.fromJson(e))
-        .toList();
-  }
 
   static Future<bool> isHoliday(DateTime date) async {
     final dateStr = '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';

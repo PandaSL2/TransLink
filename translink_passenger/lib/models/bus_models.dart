@@ -240,24 +240,6 @@ class FixedDepartureModel {
   );
 }
 
-class HolidayScheduleProfileModel {
-  final String id;
-  final String routeId;
-  final String profileName;
-
-  HolidayScheduleProfileModel({
-    required this.id,
-    required this.routeId,
-    required this.profileName,
-  });
-
-  factory HolidayScheduleProfileModel.fromJson(Map<String, dynamic> json) => HolidayScheduleProfileModel(
-    id: json['id'] as String,
-    routeId: json['route_id'] as String,
-    profileName: json['profile_name'] as String? ?? 'Holiday',
-  );
-}
-
 class FavouriteModel {
   final String? id;
   final String userId;

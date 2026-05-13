@@ -300,17 +300,6 @@ CREATE TABLE IF NOT EXISTS holidays (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS holiday_schedule_profiles (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    route_id UUID REFERENCES routes(id) ON DELETE CASCADE,
-    profile_name TEXT NOT NULL,
-    interval_minutes INTEGER NOT NULL,
-    window_start TIME NOT NULL,
-    window_end TIME NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 CREATE TABLE IF NOT EXISTS favourites (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -321,13 +310,10 @@ CREATE TABLE IF NOT EXISTS favourites (
 );
 
 ALTER TABLE holidays ENABLE ROW LEVEL SECURITY;
-ALTER TABLE holiday_schedule_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE favourites ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Public read holidays" ON holidays;
 CREATE POLICY "Public read holidays" ON holidays FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Public read holiday profiles" ON holiday_schedule_profiles;
-CREATE POLICY "Public read holiday profiles" ON holiday_schedule_profiles FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Users manage favourites" ON favourites;
 CREATE POLICY "Users manage favourites" ON favourites FOR ALL USING (auth.uid() = user_id);
 
