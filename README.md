@@ -12,7 +12,7 @@ TransLink is a state-of-the-art, location-aware public transport and digital wal
 
 ## 🗺️ System Architecture
 
-The TransLink ecosystem consists of two distinct cross-platform mobile clients communicating via an ACID-compliant, real-time backend-as-a-service (BaaS) and external microservices.
+The TransLink ecosystem consists of two distinct cross-platform mobile clients communicating via an ACID-compliant, real-time backend-as-a-service (BaaS) and external microservices. I designed the architecture to be modular and scalable.
 
 ```mermaid
 graph TD
@@ -226,10 +226,10 @@ erDiagram
 - **Llama-3.1 Processing (Groq)**: Integrated directly in the passenger app is an interactive AI chatbot using the ultra-fast `llama-3.1-8b-instant` model.
 - **Context-Aware Assistance**: The chatbot receives live database structures (available routes and stops) dynamically in its system prompt.
 
-### 🧠 4. ML-Powered Arrival Prediction (New)
-- **Live Regression Model**: Uses a custom-built Linear Regression engine in Dart to predict ETAs by analyzing **Live Bus Speed**, **Haversine Distance**, and **Time-of-Day Traffic Multipliers**.
-- **Self-Correcting Logs**: Automatically records actual arrival durations in the `travel_time_logs` table to enable the model to "learn" and refine its accuracy over time.
-- **Visual ETA Indicators**: Provides passengers with a high-confidence "Live ETA" badge when real-time GPS data is available.
+### 🧠 4. ML-Powered Arrival Prediction
+- **Live Regression Model**: I implemented a custom-built Linear Regression engine in Dart to predict ETAs by analyzing **Live Bus Speed**, **Haversine Distance**, and **Time-of-Day Traffic Multipliers**.
+- **Self-Correcting Logs**: The system automatically records actual arrival durations in the `travel_time_logs` table to enable the model to learn and refine its accuracy over time.
+- **Visual ETA Indicators**: Passengers receive a high-confidence "Live ETA" badge when real-time GPS data is available.
 
 ### 🌍 5. Complete Tri-lingual Localization
 - **Native Inline Localization**: Fully translated interface supporting **English**, **Sinhala (සිංහල)**, and **Tamil (தமிழ்)**.
