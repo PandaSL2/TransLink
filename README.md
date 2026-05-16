@@ -187,6 +187,18 @@ erDiagram
         timestamp created_at
     }
 
+    travel_time_logs {
+        uuid id PK
+        text route_number
+        text bus_number
+        uuid start_stop_id FK
+        uuid end_stop_id FK
+        integer actual_duration_minutes
+        integer hour_of_day
+        integer day_of_week
+        timestamp created_at
+    }
+
     favourites {
         uuid id PK
         uuid user_id FK
@@ -212,13 +224,16 @@ erDiagram
 
 ### 🗣️ 3. Intelligent AI Transit Chatbot
 - **Llama-3.1 Processing (Groq)**: Integrated directly in the passenger app is an interactive AI chatbot using the ultra-fast `llama-3.1-8b-instant` model.
-- **Context-Aware Assistance**: The chatbot receives live database structures (available routes and stops) dynamically in its system prompt to answer specific routing, timetable, and fare queries accurately.
-- **Smart suggestions**: Auto-suggests stops (`getSuggestions`) and interprets speech/natural language queries (`interpretQuery`) dynamically.
-- **Tri-lingual Responses**: Dynamically updates prompt instructions so the AI responds exclusively in the user's selected language (Sinhala, Tamil, or English).
+- **Context-Aware Assistance**: The chatbot receives live database structures (available routes and stops) dynamically in its system prompt.
 
-### 🌍 4. Complete Tri-lingual Localization
-- **Native Inline Localization**: Fully translated interface supporting **English**, **Sinhala (සිංහල)**, and **Tamil (தமிழ்)** across all text elements, dialogs, error handlers, and notifications.
-- **Localized Voice Feedback**: App actions speak/respond utilizing appropriate regional language contexts for voice search capabilities.
+### 🧠 4. ML-Powered Arrival Prediction (New)
+- **Live Regression Model**: Uses a custom-built Linear Regression engine in Dart to predict ETAs by analyzing **Live Bus Speed**, **Haversine Distance**, and **Time-of-Day Traffic Multipliers**.
+- **Self-Correcting Logs**: Automatically records actual arrival durations in the `travel_time_logs` table to enable the model to "learn" and refine its accuracy over time.
+- **Visual ETA Indicators**: Provides passengers with a high-confidence "Live ETA" badge when real-time GPS data is available.
+
+### 🌍 5. Complete Tri-lingual Localization
+- **Native Inline Localization**: Fully translated interface supporting **English**, **Sinhala (සිංහල)**, and **Tamil (தமிழ்)**.
+- **Localized Voice Feedback**: App actions speak/respond utilizing appropriate regional language contexts.
 
 ---
 
