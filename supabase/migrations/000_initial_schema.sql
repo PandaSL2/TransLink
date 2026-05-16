@@ -120,13 +120,7 @@ BEGIN
     END IF;
 END $$;
 
-CREATE TABLE IF NOT EXISTS driver_profiles (
-    bus_number TEXT PRIMARY KEY,
-    route_number TEXT NOT NULL,
-    route_name TEXT,
-    headway_minutes INTEGER DEFAULT 20,
-    last_seen_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+
 
 ALTER TABLE routes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE route_variants ENABLE ROW LEVEL SECURITY;
@@ -135,7 +129,6 @@ ALTER TABLE route_stop_sequences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE fixed_departures ENABLE ROW LEVEL SECURITY;
 ALTER TABLE live_bus_positions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE driver_profiles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Public read routes"           ON routes;
 CREATE POLICY "Public read routes"          ON routes           FOR SELECT USING (true);
@@ -151,8 +144,6 @@ DROP POLICY IF EXISTS "Public read fixed deps"        ON fixed_departures;
 CREATE POLICY "Public read fixed deps"       ON fixed_departures FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Public read live buses"        ON live_bus_positions;
 CREATE POLICY "Public read live buses"       ON live_bus_positions FOR SELECT USING (true);
-DROP POLICY IF EXISTS "Public read driver profiles"   ON driver_profiles;
-CREATE POLICY "Public read driver profiles"  ON driver_profiles  FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Drivers insert live"  ON live_bus_positions;
 CREATE POLICY "Drivers insert live"  ON live_bus_positions
@@ -165,13 +156,6 @@ CREATE POLICY "Drivers update live"  ON live_bus_positions
 DROP POLICY IF EXISTS "Drivers delete live"  ON live_bus_positions;
 CREATE POLICY "Drivers delete live"  ON live_bus_positions
     FOR DELETE USING (true);
-
-DROP POLICY IF EXISTS "Drivers insert profile" ON driver_profiles;
-CREATE POLICY "Drivers insert profile" ON driver_profiles FOR INSERT WITH CHECK (true);
-DROP POLICY IF EXISTS "Drivers update profile" ON driver_profiles;
-CREATE POLICY "Drivers update profile" ON driver_profiles FOR UPDATE USING (true);
-DROP POLICY IF EXISTS "Drivers delete profile" ON driver_profiles;
-CREATE POLICY "Drivers delete profile" ON driver_profiles FOR DELETE USING (true);
 
 DELETE FROM routes
 WHERE id NOT IN (
