@@ -6,6 +6,8 @@ import '../../models/bus_models.dart';
 import '../../core/utils/app_localizations.dart';
 import '../../services/supabase_service.dart';
 import '../../services/timetable_service.dart';
+import '../../services/arrival_prediction_service.dart';
+import 'dart:async';
 
 class TransportInfoScreen extends StatefulWidget {
   final RouteModel route;
@@ -19,6 +21,8 @@ class TransportInfoScreen extends StatefulWidget {
 class _TransportInfoScreenState extends State<TransportInfoScreen> {
   List<RouteStopSequenceModel> _stops = [];
   List<DateTime> _nextDepartures = [];
+  List<LiveBusData> _liveBuses = [];
+  StreamSubscription? _liveBusSub;
   bool _loading = true;
   int _highlightedStopIndex = 0;
 
@@ -26,6 +30,23 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _subscribeToLiveBuses();
+  }
+
+  @override
+  void dispose() {
+    _liveBusSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToLiveBuses() {
+    _liveBusSub = SupabaseService.getLiveBusesStream(routeNumber: widget.route.routeNumber).listen((buses) {
+      if (mounted) {
+        setState(() {
+          _liveBuses = buses;
+        });
+      }
+    });
   }
 
   Future<void> _loadData() async {
@@ -170,7 +191,20 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
     final isFirst = index == 0;
 
     DateTime? eta;
-    if (_nextDepartures.isNotEmpty) {
+    bool isLiveETA = false;
+    
+    // Check if there's a live bus approaching this stop
+    if (_liveBuses.isNotEmpty && stop != null) {
+      // Find the closest bus to this stop (simplified)
+      final liveBus = _liveBuses.first;
+      final predictedMinutes = ArrivalPredictionService.predictETA(
+        bus: liveBus,
+        stopLat: stop.lat,
+        stopLng: stop.lng,
+      );
+      eta = DateTime.now().add(Duration(minutes: predictedMinutes));
+      isLiveETA = true;
+    } else if (_nextDepartures.isNotEmpty) {
       eta = _nextDepartures.first.add(Duration(minutes: seq.travelTimeFromOriginMinutes + 5));
     }
 
@@ -221,9 +255,22 @@ class _TransportInfoScreenState extends State<TransportInfoScreen> {
                       else
                         Text('${AppLocalizations.of(context)!.translate('stop_prefix')} #${seq.sequenceOrder}', style: GoogleFonts.inter(fontSize: 14)),
                       if (eta != null)
-                        Text(
-                          isPassed ? AppLocalizations.of(context)!.translate('passed_label') : '${AppLocalizations.of(context)!.translate('today_label')} / ${DateFormat('HH:mm').format(eta)}',
-                          style: GoogleFonts.inter(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                        Row(
+                          children: [
+                            if (isLiveETA) 
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Icon(Icons.sensors_rounded, color: Colors.green, size: 10),
+                              ),
+                            Text(
+                              isPassed ? AppLocalizations.of(context)!.translate('passed_label') : '${AppLocalizations.of(context)!.translate('today_label')} / ${DateFormat('HH:mm').format(eta)}',
+                              style: GoogleFonts.inter(
+                                fontSize: 11, 
+                                color: isLiveETA ? Colors.green : Theme.of(context).colorScheme.onSurfaceVariant,
+                                fontWeight: isLiveETA ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
                         ),
                     ]),
                   ),

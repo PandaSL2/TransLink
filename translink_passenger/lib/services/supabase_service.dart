@@ -141,11 +141,10 @@ class SupabaseService {
     }, onConflict: 'user_id');
   }
 
-  static Stream<List<LiveBusData>> getLiveBusesStream() {
-    return client
-        .from('live_bus_positions')
-        .stream(primaryKey: ['bus_number'])
-        .map((data) {
+  static Stream<List<LiveBusData>> getLiveBusesStream({String? routeNumber}) {
+    var query = client.from('live_bus_positions').stream(primaryKey: ['bus_number']);
+    
+    return query.map((data) {
           final now = DateTime.now().toUtc();
           final buses = data
               .map((json) {
@@ -168,10 +167,35 @@ class SupabaseService {
                   fleetType: json['fleet_type'] ?? 'private',
                 );
               })
-              .where((bus) => bus.isActive && bus.lat != 0.0 && bus.lng != 0.0)
+              .where((bus) {
+                bool match = bus.isActive && bus.lat != 0.0 && bus.lng != 0.0;
+                if (routeNumber != null) {
+                  match = match && bus.routeNumber == routeNumber;
+                }
+                return match;
+              })
               .toList();
           return buses;
         });
+  }
+
+  static Future<void> logArrival({
+    required String routeNumber,
+    required String busNumber,
+    required String startStopId,
+    required String endStopId,
+    required int actualDurationMinutes,
+  }) async {
+    final now = DateTime.now();
+    await client.from('travel_time_logs').insert({
+      'route_number': routeNumber,
+      'bus_number': busNumber,
+      'start_stop_id': startStopId,
+      'end_stop_id': endStopId,
+      'actual_duration_minutes': actualDurationMinutes,
+      'hour_of_day': now.hour,
+      'day_of_week': now.weekday,
+    });
   }
 
   static Stream<double> getWalletStream() {
