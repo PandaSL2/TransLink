@@ -3,10 +3,10 @@
 [![Production Ready](https://img.shields.io/badge/Status-Production%20Ready-success.svg?style=for-the-badge&logo=github)](https://github.com/PandaSL2/TransLink)
 [![Platform - Flutter](https://img.shields.io/badge/Platform-Flutter%20%7C%20Dart-02569B.svg?style=for-the-badge&logo=flutter)](https://flutter.dev)
 [![Backend - Supabase](https://img.shields.io/badge/Backend-Supabase%20%7C%20Postgres-3ECF8E.svg?style=for-the-badge&logo=supabase)](https://supabase.com)
-[![AI Engine - Groq](https://img.shields.io/badge/AI%20Engine-Groq%20%7C%20Llama%203.1-F55036.svg?style=for-the-badge&logo=groq)](https://groq.com)
+[![AI Engine - OpenRouter](https://img.shields.io/badge/AI%20Engine-OpenRouter%20%7C%20Gemini%202.5-0284C7.svg?style=for-the-badge&logo=google)](https://openrouter.ai)
 [![Localization - Sinhala/Tamil/English](https://img.shields.io/badge/Localization-Tri--lingual%20%28EN%2FSI%2FTA%29-FF9900.svg?style=for-the-badge)]()
 
-TransLink is a state-of-the-art, location-aware public transport and digital wallet ecosystem designed for the Sri Lankan transportation sector. By deeply integrating **Google Maps SDK**, **Supabase Realtime Websockets**, and **Llama 3.1 LLM (via Groq)**, TransLink bridges the gap between commuters and transit operators—eliminating the need for expensive manual dispatch dashboards and providing a seamless, automated, and localized digital ticketing experience.
+TransLink is a state-of-the-art, location-aware public transport and digital wallet ecosystem designed for the Sri Lankan transportation sector. By deeply integrating **Google Maps SDK**, **Supabase Realtime Websockets**, and **Google Gemini 2.5 LLM (via OpenRouter)**, TransLink bridges the gap between commuters and transit operators—eliminating the need for expensive manual dispatch dashboards and providing a seamless, automated, and localized digital ticketing experience.
 
 ---
 
@@ -33,7 +33,7 @@ graph TD
     %% External Microservices
     subgraph External_APIs [External Cloud Services]
         Gmaps["🗺️ Google Maps SDK <br/>& Directions API"]
-        Groq["🧠 Groq AI API <br/>(Llama 3.1-8B-Instant)"]
+        OpenRouter["🧠 OpenRouter AI API <br/>(Gemini 2.5 Flash)"]
     end
 
     %% Interactions
@@ -46,7 +46,7 @@ graph TD
     
     Passenger -->|5. Read Routes / Stops| DB
     Passenger -->|6. Geolocation & Routing| Gmaps
-    Passenger -->|7. NLP Search / Voice Chat| Groq
+    Passenger -->|7. NLP Search / Voice Chat| OpenRouter
 
     Passenger -->|9. Present QR Ticket| Conductor
     Conductor -->|10. Scan QR & Trigger RPC <br/> via handle_payment RPC| RPC
@@ -58,7 +58,7 @@ graph TD
     classDef external fill:#FEF3C7,stroke:#D97706,stroke-width:2px;
     class Passenger,Conductor client;
     class Auth,Realtime,DB,RPC backend;
-    class Gmaps,Groq external;
+    class Gmaps,OpenRouter external;
 ```
 
 ---
@@ -215,16 +215,21 @@ erDiagram
 ### 🔴🔵 1. Real-time Mixed Fleet Synchronization
 - **Dynamic Live Tracking**: Tracks both Private and CTB (State) buses simultaneously. CTB buses render dynamically as **Red** markers, while Private buses appear as **Blue** markers.
 - **WebSocket Broadcast**: Uses Supabase Realtime to push live bus locations at a **5-second interval** directly to the Google Maps UI in the passenger app with zero-flicker updating.
+- **High-Density Map Visualization**: Incorporates an ultra-premium, compact bus marker generator scaling custom-rendered icons down to **`0.42`** to provide clean, clutter-free map visualization even in high-congestion regions.
 - **Operating Hours Intelligence**: The Conductor app actively checks schedule profiles (`RouteScheduleService`) and automatically terminates tracking when operating hours end.
 
 ### 💳 2. Smart Wallets & Secure QR Payments
 - **Secure Ticketing**: Passengers generate a secure QR code encoding their `uid`, requested journey `fare`, and destination (`dest`).
-- **Atomic Transactions (Postgres RPC)**: Payments are processed on the server via the custom PostgreSQL function `handle_payment`. This ensures database **atomicity**: the passenger's wallet is decremented and a transaction record is created within a single transaction block. If any step fails (e.g., insufficient funds), the entire block rolls back to prevent inconsistencies.
-- **Live Revenue Streaming**: The Conductor's homepage listens to a live stream of `fare_transactions` filtered by their specific `bus_number`, instantly updating their **Session Revenue** and **Passenger Count** widgets upon a successful scan.
+- **Atomic Transactions (Postgres RPC)**: Payments are processed on the server via the custom PostgreSQL function `handle_payment` to ensure transaction **atomicity**. Passenger wallets are decremented and transaction records are created within a single database block (rolling back fully on failure).
+- **Dual-Layered Real-time Sync**: Pushes real-time transaction updates through a hybrid **Supabase Postgres Stream + Robust HTTP Polling Fallback** (running every 2 seconds). This ensures the passenger's QR scanner sheet automatically closes and pops up the success modal instantly, even under extremely weak or unstable cellular network conditions.
+- **Persistent Route Session Memory**: The Conductor's homepage tracks session stats (Trip Revenue & Passenger Count) locally using `SharedPreferences` persistence. Active stats are kept safe across background/pause states, resetting only when the conductor explicitly presses **"Start Route"** or **"Finish Route"**.
 
 ### 🗣️ 3. Intelligent AI Transit Chatbot
-- **Llama-3.1 Processing (Groq)**: Integrated directly in the passenger app is an interactive AI chatbot using the ultra-fast `llama-3.1-8b-instant` model.
-- **Context-Aware Assistance**: The chatbot receives live database structures (available routes and stops) dynamically in its system prompt.
+- **Gemini 2.5 Flash Processing (OpenRouter)**: Integrated directly in the passenger app is a premium AI assistant running the advanced `google/gemini-2.5-flash` model.
+- **Location-Aware Smart Navigation**: The assistant automatically reads the user's current GPS coordinates (`userLat`, `userLng`) and performs a **Haversine Distance** calculation to find the nearest bus stop dynamically, letting passengers search routes relative to where they are standing without manually typing their location.
+- **Real-time Database Grounding**: The assistant dynamically queries the live local Supabase database to fetch passenger wallet balances, travel transactions, active telemetry of live bus variants, and full route schedules.
+- **Internet Search Integration**: Commuters can query general, real-world questions (such as holidays, weather, or train timetables) with the assistant utilizing full web search grounding to output clean, beautifully structured responses.
+- **Sleek Spatial Output Layout**: Enforces double line breaks between points, concise point-form route directions, and styled bold routes/stops for a highly visual, readable, and non-cluttered response bubble.
 
 ### 🧠 4. ML-Powered Arrival Prediction
 - **Live Regression Model**: I implemented a custom-built Linear Regression engine in Dart to predict ETAs by analyzing **Live Bus Speed**, **Haversine Distance**, and **Time-of-Day Traffic Multipliers**.
@@ -255,7 +260,7 @@ TransLink/
 │       │   ├── constants/               # Credentials & Config (app_constants.dart)
 │       │   └── utils/                   # Translation Engines (app_localizations.dart)
 │       ├── features/                    # UI Modules (Map, Wallet, AI Support, etc.)
-│       └── services/                    # APIs & Services (supabase_service.dart, ai_service.dart)
+│       └── services/                    # APIs & Services (supabase_service.dart, ai_service.dart, api_keys.dart [untracked secrets])
 ├── translink_Conductor/                 # Driver/Conductor Mobile Application (Flutter)
 │   └── lib/
 │       ├── core/
