@@ -128,14 +128,26 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       if (!mounted) return;
 
       final sessionStartStr = prefs.getString('lastRouteStartedAt');
-      final sessionStart = sessionStartStr != null ? DateTime.parse(sessionStartStr) : DateTime(2000);
+      final sessionStart = sessionStartStr != null ? DateTime.parse(sessionStartStr).toUtc() : DateTime(2000).toUtc();
 
       double sessionTotal = 0;
       int sessionCount = 0;
 
       for (var tx in transactions) {
         try {
-          final txDate = DateTime.tryParse(tx['created_at'] ?? '') ?? DateTime(0);
+          var txDateStr = tx['created_at'] ?? '';
+          if (txDateStr.isNotEmpty) {
+            // Normalize space to 'T' for proper ISO-8601 formatting
+            if (!txDateStr.contains('T') && txDateStr.length >= 19) {
+              txDateStr = txDateStr.replaceRange(10, 11, 'T');
+            }
+            // Realtime Postgres timestamps are always in UTC; ensure Dart knows it
+            if (!txDateStr.endsWith('Z') && !txDateStr.contains('+') && !txDateStr.contains('-')) {
+              txDateStr = '${txDateStr}Z';
+            }
+          }
+          final txDate = (DateTime.tryParse(txDateStr) ?? DateTime(0)).toUtc();
+
           if (txDate.isAfter(sessionStart)) {
             final rawAmount = tx['amount'];
             if (rawAmount != null) {
@@ -152,6 +164,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         _tripRevenue = sessionTotal;
         _passengerCount = sessionCount;
       });
+      prefs.setDouble('savedTripRevenue', sessionTotal);
+      prefs.setInt('savedPassengerCount', sessionCount);
       debugPrint('💰 [REWRITE] Session Revenue: $sessionTotal ($sessionCount txs) since $sessionStart');
     }, onError: (e) {
       debugPrint('🚨 [Revenue Stream Error] $e');
@@ -195,6 +209,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _headway       = prefs.getInt(DriverConstants.keyHeadwayMinutes)   ?? 20;
       _currentStatus = prefs.getString('currentStatus')                  ?? 'on_time';
       _isTracking    = isRunning && (prefs.getBool(DriverConstants.keyIsTracking) ?? false);
+      _tripRevenue   = prefs.getDouble('savedTripRevenue')               ?? 0.0;
+      _passengerCount = prefs.getInt('savedPassengerCount')              ?? 0;
 
       final schedule = RouteScheduleService.getSchedule(routeNum);
       _firstBus = schedule.firstBus;
@@ -278,6 +294,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final startTime = DateTime.now().toUtc().toIso8601String();
     await prefs.setString('lastRouteStartedAt', startTime);
     await prefs.setBool(DriverConstants.keyIsTracking, true);
+    await prefs.setDouble('savedTripRevenue', 0.0);
+    await prefs.setInt('savedPassengerCount', 0);
+    setState(() {
+      _tripRevenue = 0.0;
+      _passengerCount = 0;
+    });
 
     final session = SupabaseService.currentSession;
     await LocationService.startTracking(
@@ -307,6 +329,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     await prefs.setBool(DriverConstants.keyIsTracking, false);
 
     await prefs.setString('currentStatus', 'on_time');
+    await prefs.setDouble('savedTripRevenue', 0.0);
+    await prefs.setInt('savedPassengerCount', 0);
     if (_busNumber.isNotEmpty) {
       await SupabaseService.removeLivePosition(_busNumber);
     }
@@ -436,6 +460,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           _tripRevenue += fare;
           _passengerCount += 1;
         });
+        SharedPreferences.getInstance().then((p) {
+          p.setDouble('savedTripRevenue', _tripRevenue);
+          p.setInt('savedPassengerCount', _passengerCount);
+        });
       } else {
         _showErrorSnackBar(error);
       }
@@ -555,6 +583,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() {
         _tripRevenue += amount;
         _passengerCount += 1;
+      });
+      SharedPreferences.getInstance().then((p) {
+        p.setDouble('savedTripRevenue', _tripRevenue);
+        p.setInt('savedPassengerCount', _passengerCount);
       });
 
       _manualFareCtrl.text = "30";
