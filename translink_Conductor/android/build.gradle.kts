@@ -25,6 +25,12 @@ subprojects {
             if (requested.group == "org.jetbrains.kotlin") {
                 useVersion("2.1.0")
             }
+            if (requested.group == "androidx.core" && (requested.name == "core" || requested.name == "core-ktx")) {
+                useVersion("1.13.1")
+            }
+            if (requested.group == "androidx.browser" && requested.name == "browser") {
+                useVersion("1.8.0")
+            }
         }
     }
     afterEvaluate {
