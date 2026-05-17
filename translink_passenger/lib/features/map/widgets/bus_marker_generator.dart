@@ -11,7 +11,7 @@ class BusMarkerGenerator {
     required String routeName,
     required Color color,
     bool isLive = true,
-    double scale = 1.0,
+    double scale = 0.42,
     double vibeOffset = 0.0,
   }) async {
     final pictureRecorder = ui.PictureRecorder();

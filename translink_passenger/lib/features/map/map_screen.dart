@@ -751,21 +751,57 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
 
     _qrOpenTime = DateTime.now().toUtc();
 
+    Timer? pollTimer;
+
+    void handleSuccess() {
+      _txSubscription?.cancel();
+      pollTimer?.cancel();
+      _qrOpenTime = null;
+      if (Navigator.canPop(context)) Navigator.pop(context);
+      _showPaymentSuccessDialog(r);
+    }
+
     _txSubscription?.cancel();
     _txSubscription = SupabaseService.getTransactionsStream().listen((transactions) {
       if (!mounted || _qrOpenTime == null) return;
 
       final newTx = transactions.where((tx) {
         final createdAt = DateTime.tryParse(tx['created_at'] ?? '');
-        return createdAt != null && createdAt.isAfter(_qrOpenTime!);
+        return createdAt != null && createdAt.isAfter(_qrOpenTime!.subtract(const Duration(seconds: 30)));
       }).toList();
 
       if (newTx.isNotEmpty) {
+        handleSuccess();
+      }
+    });
 
-        _txSubscription?.cancel();
-        _qrOpenTime = null;
-        if (Navigator.canPop(context)) Navigator.pop(context);
-        _showPaymentSuccessDialog(r);
+    pollTimer = Timer.periodic(const Duration(seconds: 2), (timer) async {
+      if (!mounted || _qrOpenTime == null) {
+        timer.cancel();
+        return;
+      }
+      try {
+        final uid = user.id;
+        final response = await SupabaseService.client
+            .from('fare_transactions')
+            .select()
+            .eq('passenger_id', uid)
+            .order('created_at', ascending: false)
+            .limit(5);
+
+        if (response != null && _qrOpenTime != null) {
+          final txs = List<Map<String, dynamic>>.from(response);
+          final newTx = txs.where((tx) {
+            final createdAt = DateTime.tryParse(tx['created_at'] ?? '');
+            return createdAt != null && createdAt.isAfter(_qrOpenTime!.subtract(const Duration(seconds: 30)));
+          }).toList();
+
+          if (newTx.isNotEmpty) {
+            handleSuccess();
+          }
+        }
+      } catch (e) {
+        debugPrint('⚠️ [QR Polling] Error: $e');
       }
     });
 
@@ -854,6 +890,7 @@ class MapScreenState extends State<MapScreen> with WidgetsBindingObserver, Ticke
       ),
     ).then((_) {
       _txSubscription?.cancel();
+      pollTimer?.cancel();
     });
   }
 

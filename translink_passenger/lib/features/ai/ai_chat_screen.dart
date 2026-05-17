@@ -7,6 +7,7 @@ import '../../services/ai_service.dart';
 import '../../services/supabase_service.dart';
 import '../../core/services/settings_provider.dart';
 import 'package:provider/provider.dart';
+import '../../services/location_service.dart';
 
 class AiChatScreen extends StatefulWidget {
   const AiChatScreen({super.key});
@@ -119,12 +120,24 @@ class _AiChatScreenState extends State<AiChatScreen> {
     if (!mounted) return;
     final settings = Provider.of<SettingsProvider>(context, listen: false);
 
+    double? userLat;
+    double? userLng;
+    try {
+      final pos = await LocationService().getCurrentLocation();
+      if (pos != null) {
+        userLat = pos.lat;
+        userLng = pos.lng;
+      }
+    } catch (_) {}
+
     final reply = await AiService.chat(
       userMessage: msg,
       language: settings.languageName,
       history: _history,
       routes: _routes,
       stops: _stops,
+      userLat: userLat,
+      userLng: userLng,
     );
     _history.add({'role': 'assistant', 'content': reply});
 
@@ -285,15 +298,32 @@ class _AiChatScreenState extends State<AiChatScreen> {
           border: isBot ? Border.all(color: Theme.of(context).dividerColor) : null,
         ),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-        child: Text(
-          msg.text,
-          style: GoogleFonts.inter(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            color: isBot ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onPrimary,
-            height: 1.5
-          )
+        child: _buildRichText(msg.text, isBot),
+      ),
+    );
+  }
+
+  Widget _buildRichText(String text, bool isBot) {
+    final textColor = isBot ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.onPrimary;
+    final parts = text.split('**');
+    final List<InlineSpan> spans = [];
+
+    for (int i = 0; i < parts.length; i++) {
+      final isBold = i % 2 == 1;
+      spans.add(TextSpan(
+        text: parts[i],
+        style: GoogleFonts.inter(
+          fontSize: 15,
+          fontWeight: isBold ? FontWeight.w900 : FontWeight.w600,
+          color: textColor,
         ),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(
+        style: GoogleFonts.inter(height: 1.5),
+        children: spans,
       ),
     );
   }

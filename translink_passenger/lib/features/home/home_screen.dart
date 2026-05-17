@@ -169,18 +169,18 @@ class HomeScreenState extends State<HomeScreen> {
                 children: [
                   const SizedBox(height: 8),
                   _buildSearchCard(l10n),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
                   _buildSectionHeader(l10n.translate('nearby_stops'), () {
                     final shell = context.findAncestorStateOfType<MainShellState>();
                     if (shell != null) shell.setTab(2);
                   }, l10n),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   _buildNearbyStopsList(l10n),
-                  const SizedBox(height: 28),
-                  _buildSectionHeader(l10n.translate('quick_actions'), null, l10n),
                   const SizedBox(height: 16),
+                  _buildSectionHeader(l10n.translate('quick_actions'), null, l10n),
+                  const SizedBox(height: 8),
                   _buildQuickActions(l10n),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -550,7 +550,7 @@ class HomeScreenState extends State<HomeScreen> {
         height: 140,
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
-          itemCount: 3,
+          itemCount: 2,
           itemBuilder: (_, _) => _buildStopSkeleton(),
         ),
       );
@@ -572,7 +572,7 @@ class HomeScreenState extends State<HomeScreen> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _nearbyStops.length > 3 ? 3 : _nearbyStops.length,
+      itemCount: _nearbyStops.length > 2 ? 2 : _nearbyStops.length,
       itemBuilder: (context, i) => _buildStopCard(_nearbyStops[i], l10n),
     );
   }

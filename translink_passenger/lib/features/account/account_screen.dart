@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -154,69 +155,16 @@ class AccountScreenState extends State<AccountScreen> {
       barrierLabel: 'PaymentQR',
       transitionDuration: const Duration(milliseconds: 300),
       pageBuilder: (context, anim1, anim2) {
-
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Center(
             child: ScaleTransition(
               scale: anim1,
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: MediaQuery.of(context).size.width * 0.85,
-                  padding: const EdgeInsets.all(32),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.4 : 0.1),
-                        blurRadius: 30, offset: const Offset(0, 10)
-                      )
-                    ],
-                    border: Border.all(color: Theme.of(context).dividerColor),
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(l10n.translate('scan_to_pay'),
-                        style: GoogleFonts.outfit(fontSize: 26, fontWeight: FontWeight.w900, color: Theme.of(context).colorScheme.primary)),
-                      const SizedBox(height: 8),
-                      Text(l10n.translate('show_to_conductor'),
-                        style: GoogleFonts.inter(color: Theme.of(context).textTheme.bodySmall?.color, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 32),
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: Theme.of(context).dividerColor, width: 2),
-                        ),
-                        child: QrImageView(
-                          data: _cachedQrData!,
-                          version: QrVersions.auto,
-                          size: 200.0,
-                          eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
-                          dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          ),
-                          child: Text(l10n.translate('close_btn'),
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: Theme.of(context).colorScheme.primary)),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              child: _PaymentQRDialogContent(
+                qrData: _cachedQrData!,
+                onPaymentSuccess: () {
+                  _loadProfile();
+                },
               ),
             ),
           ),
@@ -1199,6 +1147,255 @@ class AccountScreenState extends State<AccountScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _PaymentQRDialogContent extends StatefulWidget {
+  final String qrData;
+  final VoidCallback onPaymentSuccess;
+
+  const _PaymentQRDialogContent({
+    required this.qrData,
+    required this.onPaymentSuccess,
+  });
+
+  @override
+  State<_PaymentQRDialogContent> createState() => _PaymentQRDialogContentState();
+}
+
+class _PaymentQRDialogContentState extends State<_PaymentQRDialogContent> {
+  StreamSubscription? _txSubscription;
+  bool _isSuccess = false;
+  double _successAmount = 0.0;
+  String _busNumber = "";
+  final DateTime _dialogOpenedAt = DateTime.now().toUtc();
+
+  @override
+  void initState() {
+    super.initState();
+    _startListeningToTransactions();
+  }
+
+  void _startListeningToTransactions() {
+    _txSubscription = SupabaseService.getTransactionsStream().listen((transactions) {
+      if (!mounted || _isSuccess) return;
+
+      for (var tx in transactions) {
+        try {
+          final txDateStr = tx['created_at'] ?? '';
+          final txDate = DateTime.tryParse(txDateStr)?.toUtc() ?? DateTime(0).toUtc();
+          
+          if (txDate.isAfter(_dialogOpenedAt.subtract(const Duration(seconds: 5)))) {
+            final type = tx['type'] as String?;
+            if (type == 'debit' || type == 'fare' || type == 'fare_deduction') {
+              final status = tx['status'] as String?;
+              if (status == 'success') {
+                setState(() {
+                  _isSuccess = true;
+                  _successAmount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
+                  _busNumber = tx['bus_number'] ?? '';
+                });
+
+                widget.onPaymentSuccess();
+                _speakSuccess(_successAmount);
+
+                Future.delayed(const Duration(milliseconds: 2500), () {
+                  if (mounted) {
+                    Navigator.pop(context);
+                  }
+                });
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('⚠️ [QR Listen] Error checking tx: $e');
+        }
+      }
+    });
+  }
+
+  Future<void> _speakSuccess(double amount) async {
+    try {
+      final tts = FlutterTts();
+      final lang = AppLocalizations.of(context)!.locale.languageCode;
+      String text = "";
+      if (lang == 'si') {
+        text = "ගෙවීම් සාර්ථකයි. රුපියල් ${amount.toStringAsFixed(0)} ක් අඩු කරන ලදී.";
+      } else if (lang == 'ta') {
+        text = "கட்டணம் வெற்றிகரமாக செலுத்தப்பட்டது. ரூபாய் ${amount.toStringAsFixed(0)} கழிக்கப்பட்டது.";
+      } else {
+        text = "Payment successful. Rupees ${amount.toStringAsFixed(0)} deducted. Enjoy your ride!";
+      }
+      await tts.setLanguage(lang == 'si' ? 'si-LK' : (lang == 'ta' ? 'ta-IN' : 'en-US'));
+      await tts.speak(text);
+    } catch (e) {
+      debugPrint('TTS Error: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _txSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          width: MediaQuery.of(context).size.width * 0.85,
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(32),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.1),
+                blurRadius: 30,
+                offset: const Offset(0, 10),
+              )
+            ],
+            border: Border.all(color: theme.dividerColor),
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+            child: _isSuccess ? _buildSuccessView(l10n, theme) : _buildQRView(l10n, theme),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQRView(AppLocalizations l10n, ThemeData theme) {
+    return Column(
+      key: const ValueKey("qr_view"),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          l10n.translate('scan_to_pay'),
+          style: GoogleFonts.outfit(
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+            color: theme.colorScheme.primary,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          l10n.translate('show_to_conductor'),
+          style: GoogleFonts.inter(
+            color: theme.textTheme.bodySmall?.color,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 32),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: theme.dividerColor, width: 2),
+          ),
+          child: QrImageView(
+            data: widget.qrData,
+            version: QrVersions.auto,
+            size: 200.0,
+            eyeStyle: const QrEyeStyle(eyeShape: QrEyeShape.square, color: Colors.black),
+            dataModuleStyle: const QrDataModuleStyle(dataModuleShape: QrDataModuleShape.square, color: Colors.black),
+          ),
+        ),
+        const SizedBox(height: 32),
+        SizedBox(
+          width: double.infinity,
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+            ),
+            child: Text(
+              l10n.translate('close_btn'),
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w800,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSuccessView(AppLocalizations l10n, ThemeData theme) {
+    return Column(
+      key: const ValueKey("success_view"),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.accent.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.accent,
+            size: 72,
+          ),
+        ),
+        const SizedBox(height: 28),
+        Text(
+          l10n.translate('payment_successful') ?? 'Payment Successful',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
+            color: AppColors.accent,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'Rs. ${_successAmount.toStringAsFixed(0)}',
+          style: GoogleFonts.outfit(
+            fontSize: 36,
+            fontWeight: FontWeight.w900,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
+        if (_busNumber.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            'Bus: $_busNumber',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        const SizedBox(height: 24),
+        Text(
+          'Enjoy your safe transit ride!',
+          style: GoogleFonts.inter(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 }
