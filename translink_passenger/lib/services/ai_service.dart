@@ -1,14 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/bus_models.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'api_keys.dart';
 
 class AiService {
 
-  static const _apiKey = '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';
-  static const _groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
-  static const _model = 'llama-3.1-8b-instant';
+  static const _apiKey = ApiKeys.openRouterKey;
+  static const _openRouterUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  static const _model = 'google/gemini-2.5-flash';
 
   static Future<List<String>> getSuggestions({
     required String rawQuery,
@@ -19,11 +21,10 @@ class AiService {
     final stopList = availableStops.take(60).join(', ');
 
     try {
-      final key = await getApiKey();
       final resp = await http.post(
-        Uri.parse(_groqUrl),
+        Uri.parse(_openRouterUrl),
         headers: {
-          'Authorization': 'Bearer $key',
+          'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -68,11 +69,10 @@ class AiService {
     final stopList = stops.take(50).join(', ');
 
     try {
-      final key = await getApiKey();
       final resp = await http.post(
-        Uri.parse(_groqUrl),
+        Uri.parse(_openRouterUrl),
         headers: {
-          'Authorization': 'Bearer $key',
+          'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -101,63 +101,134 @@ class AiService {
     return naturalQuery;
   }
 
-  static String _customApiKey = _apiKey;
-  static bool _loaded = false;
-
-  static Future<String> getApiKey() async {
-    if (!_loaded) {
-      final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString('groq_api_key');
-      if (saved != null && saved.isNotEmpty) {
-        _customApiKey = saved;
-      }
-      _loaded = true;
-    }
-    return _customApiKey;
-  }
-
-  static Future<void> saveApiKey(String key) async {
-    _customApiKey = key;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('groq_api_key', key);
-  }
-
   static Future<String> chat({
     required String userMessage,
     required List<Map<String, String>> history,
     String language = 'English',
     List<RouteModel> routes = const [],
     List<StopModel> stops = const [],
+    double? userLat,
+    double? userLng,
   }) async {
     try {
-      final routeContext = routes.take(10).map((r) => '${r.routeNumber}: ${r.name}').join(', ');
-      final stopContext = stops.take(20).map((s) => s.name).join(', ');
+      double balance = 0.0;
+      List<Map<String, dynamic>> transactions = [];
+      List<Map<String, dynamic>> liveBuses = [];
+      String currentUserEmail = '';
+      String currentUserId = '';
+      String nearestStopName = 'Unknown';
+      double nearestDistance = double.infinity;
+
+      try {
+        final user = Supabase.instance.client.auth.currentUser;
+        if (user != null) {
+          currentUserId = user.id;
+          currentUserEmail = user.email ?? '';
+        }
+      } catch (_) {}
+
+      try {
+        final balanceRes = await Supabase.instance.client.from('passenger_wallets').select('balance').eq('user_id', currentUserId).maybeSingle();
+        if (balanceRes != null) {
+          balance = (balanceRes['balance'] as num).toDouble();
+        }
+      } catch (_) {}
+
+      try {
+        final txRes = await Supabase.instance.client.from('fare_transactions').select().eq('passenger_id', currentUserId).order('created_at', ascending: false).limit(5);
+        transactions = (txRes as List).cast<Map<String, dynamic>>();
+      } catch (_) {}
+
+      try {
+        final busRes = await Supabase.instance.client.from('live_bus_positions').select();
+        liveBuses = (busRes as List).cast<Map<String, dynamic>>();
+      } catch (_) {}
+
+      if (userLat != null && userLng != null) {
+        for (final stop in stops) {
+          final dist = _haversineDistance(userLat, userLng, stop.lat, stop.lng);
+          if (dist < nearestDistance) {
+            nearestDistance = dist;
+            nearestStopName = stop.name;
+          }
+        }
+      }
+
+      final dbContext = jsonEncode({
+        'current_time': DateTime.now().toIso8601String(),
+        'user': {
+          'id': currentUserId,
+          'email': currentUserEmail,
+          'current_location': userLat != null && userLng != null ? {
+            'latitude': userLat,
+            'longitude': userLng,
+            'nearest_stop': nearestStopName,
+            'nearest_distance_meters': nearestDistance == double.infinity ? null : nearestDistance.round(),
+          } : null,
+        },
+        'wallet': {
+          'balance': balance,
+        },
+        'recent_transactions': transactions.map((t) => {
+          'id': t['id'],
+          'amount': t['amount'],
+          'type': t['type'],
+          'status': t['status'],
+          'bus_number': t['bus_number'],
+          'route_number': t['route_number'],
+          'description': t['description'],
+          'created_at': t['created_at'],
+        }).toList(),
+        'live_buses': liveBuses.map((b) => {
+          'bus_number': b['bus_number'],
+          'route_number': b['route_number'],
+          'route_name': b['route_name'],
+          'latitude': b['latitude'],
+          'longitude': b['longitude'],
+          'speed': b['speed'],
+          'status': b['status'],
+          'last_updated_at': b['last_updated_at'],
+        }).toList(),
+        'routes': routes.map((r) => {
+          'route_number': r.routeNumber,
+          'name': r.routeName,
+        }).toList(),
+        'stops': stops.map((s) => {
+          'name': s.name,
+          'latitude': s.lat,
+          'longitude': s.lng,
+        }).toList(),
+      });
 
       final messages = [
         {
           'role': 'system',
-          'content': 'You are TransLink AI, a professional transit assistant for Sri Lanka. '
-              'Your mission is to provide clear, direct, and authoritative information about bus routes, fares, and schedules. '
-              'AVAILABLE CONTEXT: Routes: $routeContext. Stops: $stopContext. '
-              'CRITICAL INSTRUCTIONS: '
-              '1. YOU MUST RESPOND EXCLUSIVELY IN THE FOLLOWING LANGUAGE: **$language**. '
-              '2. TONE: Be professional, polite, and clear. Avoid casual or "kid-like" talk. '
-              '3. FORMATTING: Use plain text with clear bullet points. DO NOT use stars (**) for bolding or any Markdown that makes the text look cluttered. '
-              '4. EMOJIS: Use emojis very sparingly—only at the start of a response to greet or indicate a bus. '
-              '5. FARE DATA: Base fare is Rs. 40.00 for the first 2km, then Rs. 10.00 per km.',
+          'content': 'You are TransLink AI, a premium, production-grade transit intelligence assistant for Sri Lanka. '
+              'You have real-time access to the local database and the internet. '
+              'If the user asks questions that require web search (e.g. weather, general info, holidays, general news, train schedules, or general internet questions), use your built-in Google Search/web search grounding capabilities or your internet knowledge to answer them accurately. '
+              'If the query relates to the local transit database (e.g. their balance, transactions, routes, stops, live buses), consult the provided real-time database context. '
+              'REAL-TIME DATABASE CONTEXT: $dbContext '
+              'CRITICAL OUTPUT LAYOUT INSTRUCTIONS: '
+              '1. LANGUAGE: Respond strictly in: **$language**. '
+              '2. STRUCTURE: Always use highly concise, step-by-step point-form structures for route/bus queries. Never use dense, multi-sentence paragraphs. '
+              '3. SPACING: Ensure there are double line breaks (\\n\\n) between distinct steps or points for a clean, spacious layout. '
+              '4. FILLER: Keep conversational introduction/filler to an absolute minimum. Get straight to the steps! '
+              '5. BOLDING: Use standard markdown double asterisks (`**`) strictly to highlight bus route numbers, specific stop names, or transaction amounts/balances (e.g., **Route 128**, **Thalagala**, **LKR 150**). The frontend will parse and style these. '
+              '6. TONE: Professional, clean, and direct.',
         },
         ...history,
       ];
 
       final resp = await http.post(
-        Uri.parse(_groqUrl),
+        Uri.parse(_openRouterUrl),
         headers: {
-          'Authorization': 'Bearer $_customApiKey',
+          'Authorization': 'Bearer $_apiKey',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
           'model': _model,
           'messages': messages,
+          'max_tokens': 1000,
           'temperature': 0.7,
         }),
       );
@@ -206,5 +277,16 @@ class AiService {
       }
     }
     return dp[m][n];
+  }
+
+  static double _haversineDistance(double lat1, double lng1, double lat2, double lng2) {
+    const r = 6371000.0; // Earth radius in meters
+    final dLat = (lat2 - lat1) * math.pi / 180.0;
+    final dLng = (lng2 - lng1) * math.pi / 180.0;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * math.pi / 180.0) * math.cos(lat2 * math.pi / 180.0) *
+            math.sin(dLng / 2) * math.sin(dLng / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return r * c;
   }
 }
